@@ -1,0 +1,17 @@
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.csproj.AssemblyReference.cache
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.AssemblyInfoInputs.cache
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.AssemblyInfo.cs
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.csproj.CoreCompileInputs.cache
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\bin\Debug\net6.0-windows\IOBoardControlMCC.exe
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\bin\Debug\net6.0-windows\IOBoardControlMCC.deps.json
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\bin\Debug\net6.0-windows\IOBoardControlMCC.runtimeconfig.json
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\bin\Debug\net6.0-windows\IOBoardControlMCC.dll
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\bin\Debug\net6.0-windows\IOBoardControlMCC.pdb
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\bin\Debug\net6.0-windows\MccDaq.dll
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.csproj.CopyComplete
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.dll
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\refint\IOBoardControlMCC.dll
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.pdb
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.genruntimeconfig.cache
+C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\ref\IOBoardControlMCC.dll
