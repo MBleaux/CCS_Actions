@@ -32,7 +32,8 @@ namespace CCS_Actions
         public const int MINLED = 0;
 
         //Others define
-        //FIXME - Adicionar comandos restantes
+        public const string ACTIONS_TITLE = "Actions Class Message";
+        public const string MCHR_TITLE = "MCHR DLL Message";
 
         //Acquisition buffer
         public const int ACQ_BUFFERLENTH = 32768;
@@ -88,7 +89,84 @@ namespace CCS_Actions
             ZENITH
         };
 
+        //NOTE - Até aqui funciona ou aparenta funcionar :| em seguida, tem q pesquisar pra ver se funciona mesmo
 
+        // Add structure for exchange only raw buffer, conversion to any type of structure depends of operationCode 
+        typedef struct readDataParam
+        {
+            enOperationCode operationcode;
+            HostConfig hostcfgrecv;
+            char rawData[BUF_SIZE];
+        } readDataParam_t;
+
+        //private parameters
+        struct stParameters
+        {
+            //Private variable value
+            int m_DeviceConnected;//Device connection state
+            int m_DeviceDetected;//Detected device
+            CString m_DeviceType;//Detected device type
+            BOOL m_bBenchStatus;//Bench connection state
+            enTypeLink m_entlLinkStatus;//Link type
+            stValidateParameters m_bParametersStatus;//Bench connection state
+            int m_bCmdsStatus;//Bench connection state
+            enChrType m_iCcsType;//Ccs Type
+            int m_iNbrOfPixel;//number of pixel
+            int m_wScanRateSync;
+            int m_wScanRateSign;
+            int m_wScanRateMeas;
+
+            float m_fCoefficientTension;
+            float m_fCoefficientCourant;
+        };
+
+        typedef struct listenparam
+        {
+            char ifaddr[16];
+            int timeoutMilliseconds;
+            short shDeviceNumber;
+        } listenparam_t;
+
+        typedef struct threadparam
+        {
+            HANDLE hThread;
+            DWORD m_dwThreadId;
+            HANDLE m_OnEvent[EVENT_NUMBER];
+            CCriticalSection critical;
+            LPVOID lpParameter;
+        } threadparam_t;
+
+        // KL_24-08-2020 fill path from BP to save by FTP
+        enum enFtpPath { _DEFAULT_PATH, _BDD_PATH, _LOG_PATH, _LOGS_PATH, _CRASH_DUMP_PATH, MAX_NBR_PATH };
+
+        typedef struct _stFtpPath
+        {
+            PTCHAR pzName;
+            PTCHAR pzPath;
+            PTCHAR pzPathBP;
+            PTCHAR pzDiagDirName;
+        } stFtpPath;
+
+        extern stFtpPath tyFtpPath[MAX_NBR_PATH];
+
+        typedef struct tagDIAG_GROUP_FILES_ZENITH
+        {
+            CString groupName;
+            int numberOfFiles;
+            //long *filesSize;
+            //CString *pszFilePath;
+            PMCHR_FILE_DATA pInfoFile;
+        }DIAG_GROUP_FILES_ZENITH, * PDIAG_GROUP_FILES_ZENITH;
+
+        typedef struct tagASYNCDIAGNOCTIC_ZENITH
+        {
+            //CDMyHtmlDialog* pInstance;
+            LPVOID pInstance;
+            int numberOfGroup;
+            DIAG_GROUP_FILES_ZENITH groupFiles[MAX_NBR_PATH];
+            //HWND m_hWnd;
+        } ASYNCDIAGNOSTIC_ZENITH, * PASYNCDIAGNOSTIC_ZENITH;
+        
         //!SECTION
 
         bool GeneralError;
