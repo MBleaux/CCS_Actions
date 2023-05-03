@@ -11,10 +11,85 @@ using System.Security.Policy;
 using Microsoft.VisualBasic.Logging;
 using static System.Windows.Forms.Design.AxImporter;
 
-namespace IOBoardControlMCC
+namespace CCS_Actions
 {
-    public class IOBoardControlMCC
+    public class CCS_Actions
     {
+
+        //SECTION - Começando o arquivo CCS_Actions a partir desta seção
+        //NOTE - Declaração escrita no arquivo CCS_Action.h
+        public const int CODE_OK = 0;
+        public const int CODE_ERROR = -1;
+        public const int ALREADYCONNECT_ERROR = -2;
+        public const int CONNECT_ERROR = -3;
+        public const int CARTE_ERROR = -4;
+        public const int NBR_PAS_ENVOI_CODEUR = 40;
+        public const int T_STATE0_CODEUR = 10;
+        public const int T_STATE1_CODEUR = 7;
+
+        // Define Max Min and number of point
+        public const int MAXLED = 100;
+        public const int MINLED = 0;
+
+        //Others define
+        //FIXME - Adicionar comandos restantes
+
+        //Acquisition buffer
+        public const int ACQ_BUFFERLENTH = 32768;
+        public const int ACQ_NBRBUFFER = 1;
+        public const int ACQ_UPTRGRATE = 65500;
+        public const int ACQ_DOWNTRGRATE = 10;
+        public const int MAX_CHAR_CMD = 100;
+        public const int MAX_CHAR_PATH = 256;
+        public const int LISSAGE_LENGTH = 20;
+
+        //Do not change the order of data
+        public const int EVENT_KILL_THREAD = 0;
+        public const int EVENT_KILL_THREAD_DO = 1;
+        public const int EVENT_NUMBER = 2;
+        public const int STANDARD_TIMEOUT = 5000;
+        public const int READ_COUNTER_DATA_TIMEOUT = 20000;
+        public const int READ_ENCODER_DATA_TIMEOUT = 200;
+        public const int HZ2MS = 1000;
+        public const int ZENITH_ENCODER_COUNT = 5;
+        public const int STRING_DEFAULT_LENGTH = 100;
+
+        //Connection Type enumeration
+        public enum enTypeLink
+        {
+            USB,
+            SERIAL_232,
+            SERIAL_422,
+            ETHERNET,
+            NOT_CONNECTED
+        };
+        
+        public enum enTypeSignalTest
+        {
+            DARK,
+            WREF,
+            LED,
+            EXPO,
+            NBR_TEST_SIGNAL
+        };
+
+        public enum enRatio
+        {
+            ZERO,
+            DIX = 10,
+            CINQUANTE = 50,
+            CENT = 100,
+            NBR_RATIO
+        };
+
+        public enum enControllerFamily
+        {
+            CCS,
+            ZENITH
+        };
+
+
+        //!SECTION
 
         bool GeneralError;
         public float RevLevel = 6.73f;
@@ -140,7 +215,7 @@ namespace IOBoardControlMCC
         private MccDaq.MccBoard TestBoard;
         private int ADRes, DARes;
         private MccDaq.Range[] ValidRanges;
-        public IOBoardControlMCC() { }
+        public CCS_Actions() { }
 
 
 
@@ -1638,7 +1713,7 @@ namespace IOBoardControlMCC
 
         static void Main()
         {
-            var BCMCC = new IOBoardControlMCC();
+            var BCMCC = new CCS_Actions();
             MccDaq.MccBoard TestBoard = new MccDaq.MccBoard(0) ;
             string NomCarte="";
             int ret;
