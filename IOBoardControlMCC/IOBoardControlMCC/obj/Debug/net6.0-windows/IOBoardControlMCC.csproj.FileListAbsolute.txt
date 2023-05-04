@@ -15,3 +15,11 @@ C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC
 C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.pdb
 C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.genruntimeconfig.cache
 C:\Users\Virgile\Documents\Cours\ISMIN\2A\PI\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\ref\IOBoardControlMCC.dll
+C:\Users\Mario\Downloads\Arquivos_do_PI\Codigos_em_CSharp\IOBoardControlMCC - Copy - Para o arquivo Actions\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.csproj.AssemblyReference.cache
+C:\Users\Mario\Downloads\Arquivos_do_PI\Codigos_em_CSharp\IOBoardControlMCC - Copy - Para o arquivo Actions\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Mario\Downloads\Arquivos_do_PI\Codigos_em_CSharp\IOBoardControlMCC - Copy - Para o arquivo Actions\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.AssemblyInfoInputs.cache
+C:\Users\Mario\Downloads\Arquivos_do_PI\Codigos_em_CSharp\IOBoardControlMCC - Copy - Para o arquivo Actions\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.AssemblyInfo.cs
+C:\Users\Mario\Downloads\Arquivos_do_PI\Codigos_em_CSharp\IOBoardControlMCC - Copy - Para o arquivo Actions\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.csproj.CoreCompileInputs.cache
+C:\Users\Mario\Downloads\Arquivos_do_PI\Codigos_em_CSharp\IOBoardControlMCC - Copy - Para o arquivo Actions\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.dll
+C:\Users\Mario\Downloads\Arquivos_do_PI\Codigos_em_CSharp\IOBoardControlMCC - Copy - Para o arquivo Actions\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\refint\IOBoardControlMCC.dll
+C:\Users\Mario\Downloads\Arquivos_do_PI\Codigos_em_CSharp\IOBoardControlMCC - Copy - Para o arquivo Actions\IOBoardControlMCC\IOBoardControlMCC\obj\Debug\net6.0-windows\IOBoardControlMCC.pdb

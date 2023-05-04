@@ -17,9 +17,6 @@ namespace CCS_Actions
 {
     public class CCS_Actions
     {
-
-        //SECTION - Commeçant le fichier CCS_Actions a partir de cette section - Começando o arquivo CCS_Actions a partir desta seção
-        //NOTE - Declaration écrit dans le fichier CCS_Action.h - Declaração escrita no arquivo CCS_Action.h
         public const int CODE_OK = 0;
         public const int CODE_ERROR = -1;
         public const int ALREADYCONNECT_ERROR = -2;
@@ -91,27 +88,26 @@ namespace CCS_Actions
             ZENITH
         };
 
-        //NOTE - Il faut chercher comme traduire les commandes suivantes - Até aqui funciona ou aparenta funcionar :| em seguida, tem q pesquisar pra ver se funciona mesmo
-
         // Add structure for exchange only raw buffer, conversion to any type of structure depends of operationCode
 
-        //FIXME - Problemas com os tipos utilizados
-        typedef struct readDataParam
+        //FIXME - Il faut reviser ces types de variables
+        struct readDataParam_t
         {
             enOperationCode operationcode;
             HostConfig hostcfgrecv;
             char rawData[BUF_SIZE];
-        } readDataParam_t;
+        };
 
-        //FIXME - Problemas com os tipos utilizados
         //private parameters
+
+        //FIXME - Il faut reviser ces types de variables: CString , BOOL (bool) stValidateParameters , enChrType
         struct stParameters
         {
             //Private variable value
             public int m_DeviceConnected;//Device connection state
             public int m_DeviceDetected;//Detected device
             public CString m_DeviceType;//Detected device type
-            public BOOL m_bBenchStatus;//Bench connection state
+            public bool m_bBenchStatus;//Bench connection state
             public enTypeLink m_entlLinkStatus;//Link type
             public stValidateParameters m_bParametersStatus;//Bench connection state
             public int m_bCmdsStatus;//Bench connection state
@@ -125,7 +121,7 @@ namespace CCS_Actions
             public float m_fCoefficientCourant;
         };
 
-        //FIXME - Verifica se funciona
+        //FIXME - Il faut tester si ce façon marche bien
         public struct listenparam_t
         {
             public char[] ifaddr;
@@ -133,11 +129,11 @@ namespace CCS_Actions
             public short shDeviceNumber;
         }
 
-        //FIXME - Problemas com os tipos
+        //FIXME - Il faut reviser ces types de variables: HANDLE , DWORD (long) , CCriticalSection , LPVOID
         public struct threadparam_t
         {
             public HANDLE hThread;
-            public DWORD m_dwThreadId;
+            public long m_dwThreadId;
             public HANDLE m_OnEvent[EVENT_NUMBER];
             public CCriticalSection critical;
             public LPVOID lpParameter;
@@ -146,7 +142,7 @@ namespace CCS_Actions
         // KL_24-08-2020 fill path from BP to save by FTP
         enum enFtpPath { _DEFAULT_PATH, _BDD_PATH, _LOG_PATH, _LOGS_PATH, _CRASH_DUMP_PATH, MAX_NBR_PATH };
 
-        //FIXME - Problemas com o tipo PTCHAR
+        //FIXME - Il faut reviser ce type de variable: PTCHAR
         public struct stFtpPath
         {
             public PTCHAR pzName;
@@ -156,7 +152,7 @@ namespace CCS_Actions
         }
 
         extern stFtpPath tyFtpPath[MAX_NBR_PATH];
-        //FIXME - Problemas com ponteiros
+        //FIXME - Problème avec les pointeurs
         public struct tagDIAG_GROUP_FILES_ZENITH
         {
             public CString groupName;
@@ -166,7 +162,7 @@ namespace CCS_Actions
             public PMCHR_FILE_DATA pInfoFile;
         }DIAG_GROUP_FILES_ZENITH, * PDIAG_GROUP_FILES_ZENITH;
 
-        //FIXME - Problemas com ponteiros
+        //FIXME - Problème avec les pointeurs
         public struct tagASYNCDIAGNOCTIC_ZENITH
         {
             //CDMyHtmlDialog* pInstance;
@@ -175,8 +171,6 @@ namespace CCS_Actions
             public DIAG_GROUP_FILES_ZENITH groupFiles[MAX_NBR_PATH];
             //HWND m_hWnd;
         } ASYNCDIAGNOSTIC_ZENITH, * PASYNCDIAGNOSTIC_ZENITH;
-        
-        //!SECTION
 
         public CCS_Actions() { }
         
