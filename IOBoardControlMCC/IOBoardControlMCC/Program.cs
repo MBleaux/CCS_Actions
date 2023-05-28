@@ -1,5 +1,6 @@
 ﻿using MccDaq;
 using System;
+using System.Diagnostics;
 using ErrorDefs;
 using System.ComponentModel.DataAnnotations;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
@@ -18,7 +19,7 @@ namespace CCS_Actions
 {
     public class CCS_Actions
     {
-        /* J'ai trouvé ce struct en rapport.h et MchrType.h de C++ */
+        /* J'ai trouvé ce struct en rapport.h de C++ */
         //structure of command
         struct stCommand
         {
@@ -230,6 +231,7 @@ namespace CCS_Actions
             int m_iSelectionCodeur;
         };
 
+        /* J'ai trouvé ce struct en MchrType.h de C++ */
         enum enChrType
         {
             MCHR_150,
@@ -334,7 +336,7 @@ namespace CCS_Actions
         {
             enOperationCode operationcode;
             HostConfig hostcfgrecv;
-            char rawData[BUF_SIZE];
+            char[] rawData = new char[1024];
         };
 
         //private parameters
@@ -411,6 +413,126 @@ namespace CCS_Actions
             //HWND m_hWnd;
         } ASYNCDIAGNOSTIC_ZENITH, * PASYNCDIAGNOSTIC_ZENITH;
 
+        /****************************
+        definition des variables
+        *****************************/
+        public ushort[] m_pAcqSignal1 = new ushort[2048];//Spectrum 1
+        public ushort[] m_pAcqSignal2 = new ushort[2048];//Spectrum 2
+        public float[] m_pAcqSig1 = new ushort[2048];//Spectrum 1
+        public float[] m_pAcqSig2 = new ushort[2048];//Spectrum 2
+        public float[] m_pAcqRef1 = new ushort[2048];//Spectrum 1
+        public float[] m_pAcqRef2 = new ushort[2048];//Spectrum 2
+        public int m_NbrSpectrum;//Spectrums number
+        public CCriticalSection m_ccsStop;//critical variable
+        // Section critique pour l'acc�s des information de status dans le thread d'acquisition des signaux
+        public CCriticalSection m_SectionCritiqueInfoStatus;
+        // Section critique pour l'acc�s des information de status dans le thread d'acquisition des signaux
+        public CCriticalSection m_SectionCritiqueConsole;
+        public float[,] m_BarySig1 = new float[20, 2];//baycenter
+        public float[,] m_BarySig2 = new float[20, 2];
+        public float m_MaxSig1;//Maximum
+        public float m_MaxSig1DarkBlue;//Maximum
+        public float m_MaxSig1DarkRed;//Maximum
+        public float m_MaxSig2;
+        public bool m_OffsetEn;//sub offset
+        public int m_iErrEndOfWRWindow;//state of end of internal window for WR
+        public listenparam_t m_listenparam;
+        public NetworkDeviceConfig m_MulticastParam;
+
+        public threadparam_t m_thMulticast;//Thread Multicast of status
+        public threadparam_t m_thTrigger;
+        public threadparam_t m_thAcqSpectre;//Thread acquisition of statu
+        public threadparam_t m_thDiagnostic;
+
+        //IOBoard controller
+        public CIOBoardControl* m_pCIOB;//IO board control
+        public char m_cSelectionCodeur;
+
+        /**************
+        Functions
+        **************/
+        //Constructor
+        CCCS_Actions(void);//create constructor
+
+        public static string CCCSA_CStringFormat(string cstrMessage, string cstrValue)
+        {
+            Console.WriteLine("Print Message: " + cstrMessage + cstrValue + "\r\n");
+            return cstrMessage + cstrValue;
+        }
+
+        public static string CCCSA_CStringFormat(string cstrMessage, int iValue)
+        {
+            string cstrValue = iValue.ToString();
+            Console.WriteLine("Print Message: " + cstrMessage + cstrValue + "\r\n");
+            return cstrMessage + cstrValue;
+        }
+
+        public static string CCCSA_CStringFormat(string cstrMessage, uint iValue)
+        {
+            string cstrValue = iValue.ToString();
+            Console.WriteLine("Print Message: " + cstrMessage + cstrValue + "\r\n");
+            return cstrMessage + cstrValue;
+        }
+
+        public static string CCCSA_CStringFormat(string cstrMessage)
+        {
+            Console.WriteLine("Print Message: " + cstrMessage + "\r\n");
+            return cstrMessage;
+        }
+
+        public static string CCCSA_CStringFormat(string cstrMessage, float fValue)
+        {
+            string cstrValue = fValue.ToString();
+            Console.WriteLine("Print Message: " + cstrMessage + cstrValue + "\r\n");
+            return cstrMessage + cstrValue;
+        }
+
+        public static string CCCSA_CStringFormat(string cstrMessage, float fMinValue, float fMaxValue)
+        {
+            string cstrValue;
+            if (fMaxValue == -1.0f)
+            {
+                cstrValue = " (a partir de " + fMinValue.ToString("F1") + ") Valeur ";
+            }
+            else
+            {
+                cstrValue = " (de " + fMinValue.ToString("F1") + " à " + fMaxValue.ToString("F1") + ") Valeur ";
+            }
+            Console.WriteLine("Print Message: " + cstrValue + "\r\n");
+            return cstrMessage + cstrValue;
+        }
+
+        public static string CCCSA_CStringFormat(string cstrMessage, int fMinValue, int fMaxValue)
+        {
+            string cstrValue;
+            if (fMaxValue == -1)
+            {
+                cstrValue = " (a partir de " + fMinValue.ToString() + ") Valeur ";
+            }
+            else
+            {
+                cstrValue = " (de " + fMinValue.ToString() + " à " + fMaxValue.ToString() + ") Valeur ";
+            }
+            Console.WriteLine("Print Message: " + cstrValue + "\r\n");
+            return cstrMessage + cstrValue;
+        }
+
+        public static string CCCSA_CStringFormat(string cstrMessage, float fValue, float fMinValue, float fMaxValue, string unites)
+        {
+            string cstrValue;
+            if (fMaxValue == -1.0f)
+            {
+                cstrValue = " (a partir de " + fMinValue.ToString("F1") + ") " + unites + " ";
+            }
+            else
+            {
+                cstrValue = " " + fValue.ToString("F1") + " (de " + fMinValue.ToString("F1") + " à " + fMaxValue.ToString("F1") + ") " + unites + " ";
+            }
+            Console.WriteLine("Print Message: " + cstrValue + "\r\n");
+            return cstrMessage + cstrValue;
+        }
+        
+
         /* Partie privée */
 
         /* FIXME - Faire les corrections sur les types:
@@ -421,68 +543,70 @@ namespace CCS_Actions
         /****************************
 	    definition des variables
 	    *****************************/
-	    MCHR_ID m_iID; // ID of the sensor
-        MCHR_tyAcqParam m_stAcqParam; // handle acquisition
-        enDigitalOutputChannel m_enOutputChannel[16];//enum configuration
-        short m_wScanRate;//current scanrate
-        long m_lAcquisitionFrequency;//current FreeFrequency
-        short m_wAverage;//current Average
-        int m_iONP;
-        int m_iOFP;
-        int m_iMNW;
-        int m_iMXW;
-        short m_wMaxDarkRedThreshold;
-        short m_wMaxDarkBlueThreshold;
-        short m_wMaxDarkThreshold;
-        short m_wOffset;
-        HZIP m_hz;
-        long m_operatingTimeCounter;
+	    private MCHR_ID m_iID; // ID of the sensor
+        private MCHR_tyAcqParam m_stAcqParam; // handle acquisition
+        private enDigitalOutputChannel m_enOutputChannel[16];//enum configuration
+        private short m_wScanRate;//current scanrate
+        private long m_lAcquisitionFrequency;//current FreeFrequency
+        private short m_wAverage;//current Average
+        private int m_iONP;
+        private int m_iOFP;
+        private int m_iMNW;
+        private int m_iMXW;
+        private short m_wMaxDarkRedThreshold;
+        private short m_wMaxDarkBlueThreshold;
+        private short m_wMaxDarkThreshold;
+        private short m_wOffset;
+        private HZIP m_hz;
+        private long m_operatingTimeCounter;
 
         //Database for parameters
-        stParameters m_stStatuParam;
+        private stParameters m_stStatuParam;
 
         //Current Power of led
-        float m_fPuissance;//Puissance value
+        private float m_fPuissance;//Puissance value
                            //Current file
-        TCHAR m_cstrFilePath[MAX_CHAR_PATH];//file path
-        string m_cstrAppDir;//file path
-        string m_cstrAppFilePath;//file path
-        string m_cstrDiagnosticFilePath;//file path
-        string m_cstrReportDir;//file path
-        string m_cstrReportFolder;
-        string m_cstrReportFileName;//file path
-        int m_iSelected_ethernet_card;
-        enIOBoardControl m_enIOBoardControlType;
+        private TCHAR m_cstrFilePath[MAX_CHAR_PATH];//file path
+        private string m_cstrAppDir;//file path
+        private string m_cstrAppFilePath;//file path
+        private string m_cstrDiagnosticFilePath;//file path
+        private string m_cstrReportDir;//file path
+        private string m_cstrReportFolder;
+        private string m_cstrReportFileName;//file path
+        private int m_iSelected_ethernet_card;
+        private enIOBoardControl m_enIOBoardControlType;
         //Report declaration
 
         /* J'ai modifié CStringArray par List<string> */
         /* CStringArray* m_pInfoReport;//info report */
-        List<string> infoReport = new List<string>();
+        private List<string> infoReport = new List<string>();
 
-        stCommand* m_pCmdReport;//command report
-        CEdit* m_pCEdit;//Current pointer on CEdit
+        private stCommand* m_pCmdReport;//command report
+        private CEdit* m_pCEdit;//Current pointer on CEdit
         int CCCSA_GetParameters();//return parameters
-        HANDLE m_DisplaySignalEvent;
-        HANDLE m_AvailableSignalEvent;
-        HANDLE m_DiagnosticDoneSignalEvent;
+        private HANDLE m_DisplaySignalEvent;
+        private HANDLE m_AvailableSignalEvent;
+        private HANDLE m_DiagnosticDoneSignalEvent;
 
         //Parameters
-        stReportInfo m_stInfoParam;
-        stAppInfo m_stAppParam;
+        private stReportInfo m_stInfoParam;
+        private stAppInfo m_stAppParam;
 
         //Threads
-        string m_cstrCcsStatus;//CCS statu
-        bool m_bAlwaysTRUE;
-        string m_cstrBenchStatus;//bench statu
-        string m_cstrPowerStatus;//bench statu
-        string m_csSensorName;
-        string m_szFirmwareVersion;
-        string m_szVersion;
+        private string m_cstrCcsStatus;//CCS statu
+        private bool m_bAlwaysTRUE;
+        private string m_cstrBenchStatus;//bench statu
+        private string m_cstrPowerStatus;//bench statu
+        private string m_csSensorName;
+        private string m_szFirmwareVersion;
+        private string m_szVersion;
 
+        //NOTE - Private:
         /**************
         Functions
         **************/
         //String and message
+	    //int CCCSA_Box(CString cstrMessErr,CString cstrTitleErr,UINT uintType,HWND hWnd/*=NULL*/,short shError);
         public static int CCCSA_ReadFile(string filePath, float[] dataBuff)
         {
             //Declaration variable
@@ -623,6 +747,260 @@ namespace CCS_Actions
             return CODE_OK;
         }
 
+        //Configuration and driver
+	    //int CCCSA_SendCommands(char *bCmd,int iCmdLength,BOOL bState);
+
+        //Returned configuration value
+        //FIXME - Está faltando a função CCCSA_SetConsole, reavaliar o código
+        public int CCCSA_GetDllVersion()
+        {
+            // Variable declaration
+            char[] txt = new char[200];
+            int iErr = CODE_OK;
+            
+            // Give version number of DLL
+            // m_ccsStop.Lock(); // Lock section
+            // Console.WriteLine("Lock get version");
+            iErr = CCCSA_SetConsole("Impossible de lire la verion de la DLL", MCHR_GetVersion(txt, 25)); // return error
+            // m_ccsStop.Unlock(); // Unlock section
+            // Console.WriteLine("Lock get version");
+            m_pInfoReport.Add("Version de DLL : " + new string(txt)); // Set current DLL version
+            m_szVersion = new string(txt);
+            Console.WriteLine("DLL version: " + new string(txt));
+            
+            return iErr;
+        }
+
+        //FIXME - Está faltando CNumero_De_Serie, m_ccsStop.Lock();, CCCSA_SetConsole, MCHR_GetSerialNumber(m_iID, txt, 200), 
+        public int CCCSA_GetSerialNumber()
+        {
+            // Variable declaration
+            char[] txt = new char[200];
+            CNumero_De_Serie NumDeSerie = new CNumero_De_Serie();
+            int iCurrentNum = 0, iErr = CODE_OK;
+            int iResponse = -1;
+
+            // Initialize variable
+            for (int d = 0; d < 200; d++)
+                txt[d] = '\0'; // initialize char
+
+            // Give serial number of the device
+            m_ccsStop.Lock();
+            Console.WriteLine("Lock thread to get serial number");
+            if (CCCSA_SetConsole("Impossible de lire le numéro de série", MCHR_GetSerialNumber(m_iID, txt, 200)) != CODE_OK)
+            {
+                m_pInfoReport.Add("Numéro de série : inconnu");
+                iErr = CODE_ERROR;
+            }
+            else if (new string(txt).Contains("9999")) // verify if not default value
+            {
+                do
+                {
+                    NumDeSerie.DoModal(); // call window
+                    iResponse = NumDeSerie.GetSerialNumber(out iCurrentNum); // Give response
+                    if (iResponse != 0)
+                        MessageBox.Show("Serial number invalide."); // verify current serial
+                } while (iResponse != 0); // verify current serial
+
+                CCCSA_SetSerialNumber(iCurrentNum);
+
+                if (CCCSA_SetConsole("Can't have serial number of the device.", MCHR_GetSerialNumber(m_iID, txt, 200)) != CODE_OK)
+                {
+                    m_pInfoReport.Add("Serial Number : inconnu"); // set invalid serial number
+                    iErr = CODE_ERROR;
+                }
+            }
+            m_ccsStop.Unlock();
+            Console.WriteLine("Unlock thread to get serial number");
+
+            if (iErr == CODE_OK)
+                m_pInfoReport.Add("Numéro de série : " + new string(txt)); // Set current CCS serial number
+
+            return iErr;
+        }
+
+        //FIXME - Está faltando CCCSA_SetConsole e MCHR_SendSerialNumber(m_iID, new string(buffer))
+        public int CCCSA_SetSerialNumber(int iNumber)
+        {
+            // char bResponse[100]; // response of CCS
+            char[] buffer = new char[10];
+            int iErr = CODE_OK;
+            sprintf(buffer, "%d", iNumber);
+            
+            // m_ccsStop.Lock(); // Lock section
+            // TRACE(_T("Lock CCCSA_SetSerialNumber\r\n"));
+            iErr = CCCSA_SetConsole("Set serial number", MCHR_SendSerialNumber(m_iID, new string(buffer))); // set serial number
+            // m_ccsStop.Unlock(); // Unlock section
+            // TRACE(_T("Unlock CCCSA_SetSerialNumber\r\n"));
+            
+            return iErr;
+        }
+
+        //Returned CRC value for serial number
+        public uint CRC(uint[] ZoneMem, int LngZone)
+        {
+            uint CrcCalcule = 0;
+            while (LngZone > 0)
+            {
+                CrcCalcule += ZoneMem[0];
+                ZoneMem++;
+                LngZone--;
+            }
+            CrcCalcule = 0xffffffff - CrcCalcule; // Crc calculated
+            return CrcCalcule;
+        }
+
+        //Returned INI configuration file
+        //FIXME - Verificar a função : GetPrivateProfileInt
+	    public int CCCS_Actions_GetInformation(string bSection, string bkey, ref uint uintData, string bPath)
+        {
+            //Declaration Variable
+            uint uintTmp = 0;
+            Console.WriteLine("Get Section: " + bSection + " " + bkey);
+            uintTmp = (uint)GetPrivateProfileInt(bSection, bkey, int.MaxValue, bPath);//save current data
+            if (uintTmp == int.MaxValue)
+            {
+                uintData = 0;
+                return CODE_ERROR;
+            }
+            uintData = uintTmp;
+            return CODE_OK;
+        }
+
+        //FIXME - Verificar a função : GetPrivateProfileString
+        public int CCCS_Actions_GetInformation(string bSection, string bkey, StringBuilder bData, int iLength, string bPath)
+        {
+            Debug.Assert(!string.IsNullOrEmpty(bSection));
+            Debug.Assert(!string.IsNullOrEmpty(bkey));
+            Debug.Assert(bData != null);
+            Debug.Assert(!string.IsNullOrEmpty(bPath));
+            //Declaration Variable
+            uint uintData;
+            bData.Clear();
+            Console.WriteLine("Get Section: " + bSection + " " + bkey);
+            uintData = GetPrivateProfileString(bSection, bkey, null, bData, iLength, bPath);
+            if (uintData == 0 || bData == null)
+            {
+                return CODE_ERROR;
+            }
+            return CODE_OK;
+        }
         
+        //FIXME - Verificar a função : GetPrivateProfileString
+        public int CCCS_Actions_GetInformationPath(string bSection, string bkey, out string bData, int iLength, string bPath)
+        {
+            Debug.Assert(!string.IsNullOrEmpty(bSection));
+            Debug.Assert(!string.IsNullOrEmpty(bkey));
+            Debug.Assert(!string.IsNullOrEmpty(bPath));
+            //Declaration Variable
+            uint uintData;
+            char[] lData = new char[MAX_CHAR_PATH];
+            Array.Clear(lData, 0, MAX_CHAR_PATH);
+            StringBuilder dataBuilder = new StringBuilder(MAX_CHAR_PATH);
+            Console.WriteLine("Get Section: " + bSection + " " + bkey);
+            uintData = GetPrivateProfileString(bSection, bkey, null, lData, iLength, bPath);
+            bData = string.Format("{0}\\{1}", m_cstrAppDir, new string(lData));
+
+            if (uintData == 0 || bData == null)
+                return CODE_ERROR;
+
+            return CODE_OK;
+        }
+
+        //FIXME - Ler e testar as quatro funções a seguir:
+        public void CCCSA_VerifyParameters(string cstrMessage, string bpSection, string bpKey, ref string cstrpRtnData, ref int ipParamValid)
+        {
+            char[] bData = new char[MAX_CHAR_PATH];
+            Array.Clear(bData, 0, MAX_CHAR_PATH);
+            ipParamValid = CCCSA_SetConsole(cstrMessage, CCCSA_GetInformationPath(bpSection, bpKey, bData, MAX_CHAR_PATH, m_cstrFilePath));
+            cstrpRtnData = new string(bData);
+        }
+
+        public void CCCSA_VerifyParameters(string cstrMessage, string bpSection, string bpKey, ref float fpRtnData, ref int ipParamValid)
+        {
+            char[] bData = new char[MAX_CHAR_CMD];
+            Array.Clear(bData, 0, MAX_CHAR_CMD);
+            ipParamValid = CCCSA_SetConsole(cstrMessage, CCCSA_GetInformation(bpSection, bpKey, bData, MAX_CHAR_CMD, m_cstrFilePath));
+            fpRtnData = float.Parse(new string(bData));
+        }
+
+        public void CCCSA_VerifyParameters(string cstrMessage, string bpSection, string bpKey, ref int ipRtnData, ref int ipParamValid)
+        {
+            uint bData = 0;
+            ipParamValid = CCCSA_SetConsole(cstrMessage, CCCSA_GetInformation(bpSection, bpKey, ref bData, m_cstrFilePath));
+            ipRtnData = (int)bData;
+        }
+
+        public void CCCSA_VerifyAppParameters(string cstrMessage, string bpSection, string bpKey, ref int ipRtnData, ref int ipParamValid)
+        {
+            uint bData = 0;
+            ipParamValid = CCCSA_SetConsole(cstrMessage, CCCSA_GetInformation(bpSection, bpKey, ref bData, m_cstrAppFilePath.GetBuffer()));
+            ipRtnData = (int)bData;
+        }
+
+        //FIXME - Alterações: WideCharToMultiByte para Encoding.Default.GetByteCount
+        public string WideCharToAnsi(string wUnicode)
+        {
+            string szAnsi = null;
+            if (!string.IsNullOrEmpty(wUnicode))
+            {
+                int size = Encoding.Default.GetByteCount(wUnicode);
+                byte[] ansiBytes = new byte[size];
+                Encoding.Default.GetBytes(wUnicode, 0, wUnicode.Length, ansiBytes, 0);
+                szAnsi = Encoding.Default.GetString(ansiBytes);
+            }
+            return szAnsi;
+        }
+
+        //FIXME - Colocar função: static DWORD WINAPI CCCSA_GetDiagnosticThread_ZENITH(LPVOID pParam);
+
+        //FIXME - Revisar
+        private static int maxcount = 0;
+        private static int count = 0;
+        public void CCCSA_GetDiagCallBack_ZENITH(bool b, long Param1, long Param2)
+        {
+            maxcount = 0;
+            count = 0;
+            if (Param2 != 0 && b && Param1 == 0)
+            {
+                Console.WriteLine("GetFileCallBack Param");
+            }
+
+            if (b)
+            {
+                maxcount = (int)Param2;
+                count = 0;
+                //::PostMessage(m_WindowToNotifyDiagnostic, WM_MS_DIAGNOSTIC_PROGRESS, Param2, 1);
+            }
+            else
+            {
+                //::PostMessage(m_WindowToNotifyDiagnostic, WM_MS_DIAGNOSTIC_PROGRESS, Param1, 0);
+                count++;
+            }
+        }
+
+        //FIXME - Revisar: falta CloseZip()
+        private int m_hz = 0;
+        public bool CloseZipHandle()
+        {
+            if (m_hz != 0)
+            {
+                //Operation complete, close the zip
+                CloseZip(m_hz);
+                m_hz = 0;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        //FIXME - Revisar: tipo HZIP
+        public int GetZipHandle()
+        {
+            return m_hz;
+        }
+
    }
 }
