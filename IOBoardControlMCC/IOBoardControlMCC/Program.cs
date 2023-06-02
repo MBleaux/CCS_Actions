@@ -257,7 +257,8 @@ namespace CCS_Actions
 
         /* Fichier CCS_Actions.h */
         /*NOTE - Partie publique*/
-
+        public const int MCHR_ERROR_NONE = 1;
+        public const int NoError = 0;
         public const int CODE_OK = 0;
         public const int CODE_ERROR = -1;
         public const int ALREADYCONNECT_ERROR = -2;
@@ -454,6 +455,7 @@ namespace CCS_Actions
         //Constructor
         CCCS_Actions(void);//create constructor
 
+        //String format
         public static string CCCSA_CStringFormat(string cstrMessage, string cstrValue)
         {
             Console.WriteLine("Print Message: " + cstrMessage + cstrValue + "\r\n");
@@ -532,7 +534,401 @@ namespace CCS_Actions
             return cstrMessage + cstrValue;
         }
         
+        //Function on report
+        //FIXME - Il faut regarder .Add()
+        public void CCCSA_AddStringToReport(string message)
+        {
+            m_pInfoReport.Add(message);
+        }
 
+        // Function to set report data
+        public void CCCSA_SetReport(stCommand stCReport, List<string> cstrIReport)
+        {
+            Console.WriteLine("Set report");
+            m_pCmdReport = stCReport;
+            m_pInfoReport = cstrIReport;
+        }
+
+        public void CCCSA_GetReport(out stCommand stCReport, out List<string> cstrIReport)
+        {
+            Console.WriteLine("Get report");
+            stCReport = m_pCmdReport;
+            cstrIReport = m_pInfoReport;
+        }
+
+        //Return console
+        //FIXME - Il faut regarder ce qu'il serait CEdit et ses derivations
+        public void CCCSA_SetConsole(CEdit pCEdit)
+        {
+            m_pCEdit = pCEdit;
+        }
+
+        public void CCCSA_SetConsole(string cstrMessErr, bool bClr)
+        {
+            string cstrMessage;
+            char[] bWindowText = new char[10000];
+
+            Array.Clear(bWindowText, 0, 10000);
+
+            if (m_pCEdit != null)
+            {
+                m_SectionCritiqueConsole.Lock();
+                Console.WriteLine("Lock m_SectionCritiqueConsole set BOOLEAN in console");
+
+                if (!bClr)
+                {
+                    m_pCEdit.GetWindowTextA(bWindowText, 10000);
+                    cstrMessage = new string(bWindowText) + cstrMessErr + "\r\n";
+                }
+                else
+                {
+                    cstrMessage = cstrMessErr + "\r\n";
+                }
+
+                m_pCEdit.SetWindowTextA(cstrMessage);
+                m_pCEdit.LineScroll(m_pCEdit.GetLineCount());
+                m_pCEdit.UpdateWindow();
+                m_SectionCritiqueConsole.Unlock();
+                Console.WriteLine("Unlock m_SectionCritiqueConsole set BOOLEAN in console");
+            }
+        }
+
+        //FIXME - Il faut regarder les valeurs qu'on vient de MchrError.h du projet originale
+        public int CCCSA_SetConsole(string cstrMessErr, short shError)
+        {
+            short ushTypeError = MCHR_ERROR_NONE;
+            string cstrMessage, cstrValue; // La variable cstrRetour a été suprimée
+            char[] bWindowText = new char[10000];
+
+            Array.Clear(bWindowText, 0, 10000);
+
+            if (shError != MCHR_ERROR_NONE)
+            {
+                ushTypeError = (short)(MCHR_GetLastError(m_iID) - MCHR_ERROR_CODE);
+
+                if (MCHR_GetLastError(m_iID) == MCHR_ERROR_DIALOG_CHR)
+                    return CODE_OK;
+
+                cstrValue = string.Format(": Erreur {0:X3}\r\n", ushTypeError);
+
+                if (m_pCEdit != null)
+                {
+                    m_SectionCritiqueConsole.Lock();
+                    Console.WriteLine("Lock m_SectionCritiqueConsole set SHORT in console");
+
+                    m_pCEdit.GetWindowTextA(bWindowText, 10000);
+                    cstrMessage = new string(bWindowText) + cstrMessErr + cstrValue;
+                    m_pCEdit.SetWindowTextA(cstrMessage);
+                    m_pCEdit.UpdateWindow();
+                    m_SectionCritiqueConsole.Unlock();
+                    Console.WriteLine("Unlock m_SectionCritiqueConsole set SHORT in console");
+                }
+
+                return CODE_ERROR;
+            }
+
+            return CODE_OK;
+        }
+
+        public int CCCSA_SetConsole(string cstrMessErr, int iError)
+        {
+            string cstrMessage, cstrValue;
+            char[] bWindowText = new char[10000];
+
+            Array.Clear(bWindowText, 0, 10000);
+
+            if (iError < CODE_OK)
+            {
+                cstrValue = string.Format(": Erreur {0}\r\n", iError);
+
+                if (m_pCEdit != null)
+                {
+                    m_SectionCritiqueConsole.Lock();
+                    Console.WriteLine("Lock m_SectionCritiqueConsole set INT in console");
+
+                    m_pCEdit.GetWindowTextA(bWindowText, 10000);
+                    cstrMessage = new string(bWindowText) + cstrMessErr + cstrValue;
+                    m_pCEdit.SetWindowTextA(cstrMessage);
+                    m_pCEdit.UpdateWindow();
+                    m_SectionCritiqueConsole.Unlock();
+                    Console.WriteLine("Unlock m_SectionCritiqueConsole set INT in console");
+                }
+
+                return CODE_ERROR;
+            }
+
+            return CODE_OK;
+        }
+
+        //Returned on configuration value
+        //FIXME - Il faut regarder le type de variable int et MCHR_ID
+        public int CCCSA_GetID()
+        {
+            Console.WriteLine("Get ID: " + m_iID);
+            return m_iID;
+        }
+
+        public int CCCSA_GetNbrOfPixel()
+        {
+            Console.WriteLine("Get Number of pixel: " + m_stStatuParam.m_iNbrOfPixel);
+            return m_stStatuParam.m_iNbrOfPixel;
+        }
+
+        //FIXME - Il faut regarder la fonction MCHR_GetStatus()
+        public void CCCSA_SetCcsStatus()
+        {
+            short shMessage = MCHR_GetStatus(m_iID);
+            switch (shMessage)
+            {
+                case MCHR_STATUS_NOT_INITIALIZED:
+                    m_cstrCcsStatus = "Pas initialis�";
+                    break;
+                case MCHR_STATUS_INITIALIZED:
+                    m_cstrCcsStatus = "Initialisation";
+                    break;
+                case MCHR_STATUS_INIT_FAILED:
+                    m_cstrCcsStatus = "Erreur d'initialisation";
+                    break;
+                case MCHR_STATUS_WAIT_COMMAND:
+                    m_cstrCcsStatus = "Attente commande";
+                    break;
+                case MCHR_STATUS_COMMAND_IN_PROGRESS:
+                    m_cstrCcsStatus = "Traitement commande";
+                    break;
+                case MCHR_STATUS_ACQUISITION_IN_PROGRESS:
+                    m_cstrCcsStatus = "Traitement acquisition";
+                    break;
+                case MCHR_STATUS_CONTINUOUS_ACQ_IN_PROGRESS:
+                    m_cstrCcsStatus = "Acquisition continue";
+                    break;
+                case MCHR_STATUS_STOP_ACQ_IN_PROGRESS:
+                    m_cstrCcsStatus = "Arret d'acquisition";
+                    break;
+                default:
+                    m_cstrCcsStatus = "Statu invalide";
+                    break;
+            }
+        }
+
+        //FIXME - Il faut regarder le type de variable U16 et I16, m_pCIOB.CIOBCTRL_Read_Bench(ref u16iv)
+        public void CCCSA_SetBenchStatus()
+        {
+            ushort u16iv = 0;
+            short i16Err = m_pCIOB.CIOBCTRL_Read_Bench(ref u16iv);
+
+            if (i16Err == NoError)
+            {
+                if (u16iv == 0)
+                {
+                    m_cstrBenchStatus = "D�connect�";
+                    m_pCIOB.CIOBCTRL_Set_Digital_Output(LED2_DOChannel, true);
+                    m_stStatuParam.m_bBenchStatus = false;
+                }
+                else
+                {
+                    m_cstrBenchStatus = "Connect�";
+                    m_stStatuParam.m_bBenchStatus = true;
+                }
+            }
+            else
+            {
+                m_pCIOB.CIOBCTRL_Set_Digital_Output(LED2_DOChannel, true);
+                m_cstrBenchStatus = "Statu invalide";
+                m_stStatuParam.m_bBenchStatus = false;
+            }
+        }
+
+        public void CCCSA_GetConnectionStatus(out string cstrBench, out string cstrCCS, out string cstrPower, out float Puissance)
+        {
+            string cstrValue = m_fPuissance.ToString("0.000");
+            cstrCCS = m_cstrCcsStatus;
+            cstrBench = m_cstrBenchStatus;
+            Puissance = m_fPuissance;
+            cstrPower = cstrValue;
+        }
+
+        public int CCCSA_GetConnectionStatus()
+        {
+            Console.WriteLine("Get link status: " + m_stStatuParam.m_DeviceConnected);
+            return m_stStatuParam.m_DeviceConnected;
+        }
+
+        public void CCCSA_GetPowerParam(out float fAlpha, out float fBeta, out float fGamma)
+        {
+            Console.WriteLine("Parameter Alpha: " + m_stInfoParam.m_fAlpha);
+            fAlpha = m_stInfoParam.m_fAlpha;
+            Console.WriteLine("Parameter Beta: " + m_stInfoParam.m_fBeta);
+            fBeta = m_stInfoParam.m_fBeta;
+            Console.WriteLine("Parameter Gamma: " + m_stInfoParam.m_fGamma);
+            fGamma = m_stInfoParam.m_fGamma;
+        }
+
+        public int CCCSA_GetNbrOfCmd()
+        {
+            Console.WriteLine("Get Number of commands: " + m_stInfoParam.m_CmdNbr);
+            return m_stInfoParam.m_CmdNbr;
+        }
+
+        public int CCCSA_GetNbrCmdStatus()
+        {
+            Console.WriteLine("Get number of Command Status: " + m_stStatuParam.m_bCmdsStatus);
+            return m_stStatuParam.m_bCmdsStatus;
+        }
+
+        public void CCCSA_GetHtmlPath(out string cstrPath, out int iParamErr)
+        {
+            Console.WriteLine("Get html path: " + m_stInfoParam.m_FilePath);
+            cstrPath = m_stInfoParam.m_FilePath;
+            iParamErr = m_stStatuParam.m_bParametersStatus.m_HtmlFile;
+        }
+
+        public void CCCSA_SetHtmlPath(ref string cstrPath, ref int iParamErr)
+        {
+            Console.WriteLine("Set html path: " + cstrPath);
+            m_stInfoParam.m_FilePath = cstrPath;
+            m_stStatuParam.m_bParametersStatus.m_HtmlFile = iParamErr;
+        }
+
+        public void CCCSA_GetHtmlDir(ref string cstrDir, ref int iParamErr)
+        {
+            Console.WriteLine("Get html dir: " + m_cstrReportDir);
+            cstrDir = m_cstrReportDir;
+            iParamErr = m_stStatuParam.m_bParametersStatus.m_HtmlFile;
+        }
+
+        public void CCCSA_SetHtmlDir(ref string cstrDir, ref int iParamErr)
+        {
+            Console.WriteLine("Set html dir: " + cstrDir);
+            m_cstrReportDir = cstrDir;
+            m_stStatuParam.m_bParametersStatus.m_HtmlFile = iParamErr;
+        }
+
+        //FIXME - Il faut regarder les variables qui manquent (MCHR)
+        public int CCCSA_Init()
+        {
+            // Variable declaration
+            char[] txt = new char[200];
+            short shUsbDeviceNumber = 0, t = 0;
+            string[] bUsbDeviceList = new string[MCHR_MAX_SENSOR];
+            CCCSA_SetConsole("Extinction led rouge", Convert.ToInt32(m_pCIOB.CIOBCTRL_Set_Red_Led(false)));
+            CCCSA_SetConsole("Extinction led verte", Convert.ToInt32(m_pCIOB.CIOBCTRL_Set_Green_Led(false)));
+            CCCSA_SetConsole("Extinction led bleu", Convert.ToInt32(m_pCIOB.CIOBCTRL_Set_Blue_Led(false)));
+
+            // Variable initialization
+            if (m_iID <= 0)
+            {
+                // init captor ID
+                COleDateTime time = DateTime.Now;
+                string sRapportDeTest = string.Format("<H3>Rapport de test {0}</H3></HR>", time.ToString());
+                m_pInfoReport.Add(sRapportDeTest);
+                m_pInfoReport.Add(string.Format("Banc_De_Test_CCS version : {0}", VERSION_BANC_DE_TEST));
+                CCCSA_GetDllVersion();
+
+                for (int j = 0; j < MCHR_MAX_SENSOR; j++)
+                {
+                    bUsbDeviceList[j] = new string('\0', MCHR_USB_DEVICE_NAME_LENGTH);
+                }
+
+                Array.Clear(txt, 0, txt.Length);
+
+                // Get current devices list which are connected
+                m_stStatuParam.m_DeviceDetected = CCCSA_SetConsole("Aucun CCCS USB Pr�sent", MCHR_GetUsbDeviceList(bUsbDeviceList, ref shUsbDeviceNumber));
+                if (m_stStatuParam.m_DeviceDetected == CODE_OK)
+                {
+                    // Validate connection
+                    if (shUsbDeviceNumber == 0)
+                    {
+                        m_stStatuParam.m_DeviceDetected = CONNECT_ERROR;
+                        CCCSA_SetConsole("No Device is connected!!!", m_stStatuParam.m_DeviceDetected);
+                    }
+                    else if (shUsbDeviceNumber > 1)
+                    {
+                        m_stStatuParam.m_DeviceType = bUsbDeviceList[0];
+                        MessageBox.Show("Plusieurs CCS sont connect�!!! Evaluation du premier CCS.");
+                    }
+                    else
+                    {
+                        m_stStatuParam.m_DeviceType = bUsbDeviceList[0];
+                    }
+                    m_pInfoReport.Add(string.Format("Type :  {0}", m_stStatuParam.m_DeviceType));
+                }
+
+                // Delete list of chr
+                for (int j = 0; j < MCHR_MAX_SENSOR; j++)
+                {
+                    bUsbDeviceList[j] = null;
+                }
+            }
+            else
+            {
+                CCCSA_SetConsole("CCCS USB d�ja pr�sent");
+            }
+
+            OutputDebugString(m_stStatuParam.m_DeviceType);
+            OutputDebugString("\n\r");
+            
+            if (m_stStatuParam.m_DeviceType.Contains("OPTIMA"))
+            {
+                if (m_stStatuParam.m_DeviceType.Contains("OPTIMA+") ||
+                    m_stStatuParam.m_DeviceType.Contains("OPTIMA PLUS"))
+                {
+                    OutputDebugString("OPTIMA PLUS TROUVE\n\r");
+                    m_cstrFilePath = "C:\\OPTIMA_PLUS_settings.ini";
+                    CCCSA_InitParameters();
+                }
+                else if (m_stStatuParam.m_DeviceType.Contains("OPTIMA STAR"))
+                {
+                    OutputDebugString("EXTREMA TROUVE\n\r");
+                    m_cstrFilePath = "C:\\EXTREMA_settings.ini";
+                    CCCSA_InitParameters();
+                }
+                else
+                {
+                    OutputDebugString("OPTIMA TROUVE\n\r");
+                    m_cstrFilePath = "C:\\OPTIMA_settings.ini";
+                    CCCSA_InitParameters();
+                }
+            }
+            else if (m_stStatuParam.m_DeviceType.Contains("PRIMA"))
+            {
+                OutputDebugString("PRIMA TROUVE\n\r");
+                m_cstrFilePath = "C:\\PRIMA_settings.ini\0";
+                CCCSA_InitParameters();
+                OutputDebugString("PRIMA INIT\n\r");
+            }
+            else if (m_stStatuParam.m_DeviceType.Contains("INITIAL"))
+            {
+                OutputDebugString("INITIAL TROUVE\n\r");
+                m_cstrFilePath = "C:\\PRIMA_settings.ini\0";
+                CCCSA_InitParameters();
+                OutputDebugString("INITIAL INIT\n\r");
+            }
+            else if (m_stStatuParam.m_DeviceType.Contains("IR") || m_stStatuParam.m_DeviceType.Contains("VIZIR"))
+            {
+                OutputDebugString("VIZIR TROUVE\n\r");
+                m_cstrFilePath = "C:\\VIZIR_settings.ini\0";
+                CCCSA_InitParameters();
+                OutputDebugString("VIZIR INIT\n\r");
+            }
+            else if (m_stStatuParam.m_DeviceType.Contains("EXTREMA"))
+            {
+                OutputDebugString("EXTREMA TROUVE\n\r");
+                m_cstrFilePath = "C:\\EXTREMA_settings.ini\0";
+                CCCSA_InitParameters();
+                OutputDebugString("EXTREMA INIT\n\r");
+            }
+            else if (m_stStatuParam.m_DeviceType.Contains("ULTIMA"))
+            {
+                OutputDebugString("ULTIMA TROUVE\n\r");
+                m_cstrFilePath = "C:\\ULTIMA_settings.ini\0";
+                CCCSA_InitParameters();
+            }
+
+            return m_stStatuParam.m_DeviceDetected;
+        }
+        
+        //FIXME - Il faut reviser ce qu'il s'agit NDD_network_device_print_hello(); NDD_init_lib(HOST_MODE, 0);
+        
         /* Partie privée */
 
         /* FIXME - Faire les corrections sur les types:
@@ -579,9 +975,10 @@ namespace CCS_Actions
 
         /* J'ai modifié CStringArray par List<string> */
         /* CStringArray* m_pInfoReport;//info report */
-        private List<string> infoReport = new List<string>();
-
-        private stCommand* m_pCmdReport;//command report
+        //private List<string> infoReport = new List<string>();
+        //private stCommand* m_pCmdReport;//command report
+        private stCommand m_pCmdReport;
+        private List<string> m_pInfoReport;
         private CEdit* m_pCEdit;//Current pointer on CEdit
         int CCCSA_GetParameters();//return parameters
         private HANDLE m_DisplaySignalEvent;
