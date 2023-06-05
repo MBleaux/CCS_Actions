@@ -928,7 +928,1202 @@ namespace CCS_Actions
         }
         
         //FIXME - Il faut reviser ce qu'il s'agit NDD_network_device_print_hello(); NDD_init_lib(HOST_MODE, 0);
+        public int CCCSA_Init_Zenith()
+        {
+            // Variable declaration
+            string txt;
+            short shUsbDeviceNumber = 0;
+            int t = 0;
+            int nIndex = 0;
+            //FIXME - Il manque d'ajouter des fonctions provient de CIOBCTRL
+            CCCSA_SetConsole("Extinction led rouge", (int)m_pCIOB.CIOBCTRL_Set_Red_Led(false));
+            CCCSA_SetConsole("Extinction led verte", (int)m_pCIOB.CIOBCTRL_Set_Green_Led(false));
+            CCCSA_SetConsole("Extinction led bleu", (int)m_pCIOB.CIOBCTRL_Set_Blue_Led(false));
+            
+            // Variable initialization
+            if (m_iID <= 0)
+            {
+                // Get current DLL version
+                COleDateTime time = COleDateTime.GetCurrentTime();
+                string sRapportDeTest = string.Format("<H3>Rapport de test {0}</H3></HR>", time.Format());
+                m_pInfoReport.Add(sRapportDeTest);
+                m_pInfoReport.Add(CCCSA_CStringFormat("Banc_De_Test_Controleur version : ", new CString(VERSION_BANC_DE_TEST)));
+                CCCSA_GetDllVersion();
+                NDD_network_device_print_hello(); // Je ne sais pas s'il existe ça fonction
+                NDD_init_lib(HOST_MODE, 0);
+                int l_NbIface = NDD_get_nb_multicast_ifaddrs();
+                string[] l_ifaddrtable = new string[l_NbIface];
+                string[] l_ifaddrDesctable = new string[l_NbIface];
+                
+                for (int i = 0; i < l_NbIface; i++)
+                {
+                    l_ifaddrtable[i] = "0.0.0.0";
+                    l_ifaddrDesctable[i] = new char[DESCRIPTION_NETWORK_ADAPTER_LENGTH];
+                    Array.Fill(l_ifaddrDesctable[i], '\0');
+                }
+                
+                NDD_get_multicast_ifaddr_list(l_ifaddrtable, l_ifaddrDesctable);
+                
+                CCCSA_SetConsole("Ethernet card List :");
+                for (int i = 0; i < l_NbIface; i++)
+                {
+                    txt = $"{i + 1}. {l_ifaddrDesctable[i]}";
+                    CCCSA_SetConsole(txt);
+                }
+                
+                if (l_NbIface >= m_stAppParam.m_iSelected_ethernet_card && 0 < m_stAppParam.m_iSelected_ethernet_card)
+                {
+                    Array.Copy(Encoding.ASCII.GetBytes(l_ifaddrtable[m_stAppParam.m_iSelected_ethernet_card - 1]), m_listenparam.ifaddr, IPADDRESS_LENGTH);
+                    m_listenparam.timeoutMilliseconds = 300;
+                    m_listenparam.shDeviceNumber = shUsbDeviceNumber;
+                    NDD_print_version();
+                    m_pInfoReport.Add(CCCSA_CStringFormat("Multicast Library version : ", new CString(NDD_get_version())));
+                    CCCSA_OpenThread(ref m_thMulticast, Multicast, this);
+                    Thread.Sleep(1000);
+                    int ret = 1;
+                    HostConfig l_hostcfg = new HostConfig();
+                    Array.Fill(l_hostcfg.MACAddr_RO, (byte)0);
+                    l_hostcfg.ProcessID = 0;
+                    NDD_write_raw_data(m_listenparam.ifaddr, NET_DEV_DISCOVER_OPCODE, ref l_hostcfg, null);
+                    Thread.Sleep(1000);
+                    CCCSA_CloseThread(ref m_thMulticast);
+                }
+                else
+                {
+                    CCCSA_SetConsole("Veuillez sélectionner une carte ethernet valide");
+                    return m_stStatuParam.m_DeviceDetected;
+                }
+                
+                for (int i = 0; i < l_NbIface; i++)
+                {
+                    l_ifaddrtable[i] = null;
+                    l_ifaddrDesctable[i] = null;
+                }
+                
+                l_ifaddrtable = null;
+                l_ifaddrDesctable = null;
+                
+                shUsbDeviceNumber = m_listenparam.shDeviceNumber;
+                char[] Ip = new char[20];
+                
+                for (nIndex = 0; nIndex < ADDRESS_LEN; nIndex++)
+                {
+                    Ip[4 * nIndex] = (char)m_MulticastParam.IpAddr_RW[nIndex];
+                    Ip[4 * nIndex + 1] = '.';
+                }
+                
+                // Get current devices list which are connected
+                // m_stStatuParam.m_DeviceDetected = CCCSA_SetConsole("Aucun Zenith identifie sur le réseau", MCHR_GetUsbDeviceList(bUsbDeviceList, ref shUsbDeviceNumber));
+                
+                if (m_stStatuParam.m_DeviceDetected == CODE_OK)
+                {
+                    // Validate connection
+                    if (shUsbDeviceNumber == 0)
+                    {
+                        m_stStatuParam.m_DeviceDetected = CONNECT_ERROR;
+                        CCCSA_SetConsole("No Device is detected!!!", m_stStatuParam.m_DeviceDetected);
+                    }
+                    else if (shUsbDeviceNumber > 1)
+                    {
+                        m_csSensorName = CString.Format("{0}_{1}", m_MulticastParam.Model_RO, m_MulticastParam.SerialNumber_RO);
+                        m_stStatuParam.m_DeviceType = $"{m_csSensorName}_{Ip}";
+                        txt = $"Plusieurs ZENITH sont detectés!!! Evaluation du controleur :\n {m_stStatuParam.m_DeviceType}";
+                        AfxMessageBox(txt);
+                    }
+                    else
+                    {
+                        m_csSensorName = CString.Format("{0}_{1}", m_MulticastParam.Model_RO, m_MulticastParam.SerialNumber_RO);
+                        m_stStatuParam.m_DeviceType = $"{m_csSensorName}_{Ip}";
+                    }
+                    
+                    m_pInfoReport.Add(CCCSA_CStringFormat("Type : ", m_stStatuParam.m_DeviceType));
+                }
+            }
+            else
+            {
+                CCCSA_SetConsole("ZENITH déjà présent");
+            }
+            
+            OutputDebugString(m_stStatuParam.m_DeviceType);
+            OutputDebugString("\n\r");
+            
+            if (m_stStatuParam.m_DeviceType.Find("ZENITH", 0) >= 0)
+            {
+                if (m_stStatuParam.m_DeviceType.Find("ZENITH2CH", 0) >= 0 || m_stStatuParam.m_DeviceType.Find("ZENITH2V", 0) >= 0)
+                {
+                    OutputDebugString("ZENITH 2 VOIES TROUVE\n\r");
+                    m_cstrFilePath = Path.Combine(m_cstrAppDir, "ZENITH2V_settings.ini");
+                    CCCSA_InitParameters();
+                }
+                else if (m_stStatuParam.m_DeviceType.Find("ZENITH5K", 0) >= 0)
+                {
+                    OutputDebugString("ZENITH5K TROUVE\n\r");
+                    m_cstrFilePath = Path.Combine(m_cstrAppDir, "ZENITH5K_settings.ini");
+                    CCCSA_InitParameters();
+                }
+                else
+                {
+                    OutputDebugString("ZENITH TROUVE\n\r");
+                    m_cstrFilePath = Path.Combine(m_cstrAppDir, "ZENITH_settings.ini");
+                    CCCSA_InitParameters();
+                }
+            }
+            
+            return m_stStatuParam.m_DeviceDetected;
+        }
+
+        //FIXME - Il manque la fonction int CCCSA_Init_Zenith();
+
+        public int CCCS_Actions.CCCSA_Disconnect()
+        {
+            // free event memory
+            if (m_iID > 0)
+            {
+                CCCSA_Release();
+                Console.WriteLine("DECONNEXION du port");
+                m_pCIOB.CIOBCTRL_Set_432_422(false); // set board in 232 case
+                m_ccsStop.Lock();
+                if (CCCSA_SetConsole("Fermeture de la connexion", MCHR_CloseChr(m_iID)) != CODE_OK)
+                {
+                    MessageBox.Show("Impossible de fermer le port.");
+                    return CODE_ERROR;
+                }
+                m_ccsStop.Unlock();
+                Thread.Sleep(200);
+                m_iID = 0;
+            }
+            return CODE_OK;
+        }
+
+        public int CCCS_Actions.CCCSA_GetDeviceType()
+        {
+            return m_stStatuParam.m_iCcsType;
+        }
+
+        public void CCCS_Actions.CCCSA_SetIOControls(CIOBoardControl CIOBCtrls)
+        {
+            Console.WriteLine("Set IO controls");
+            m_pCIOB = CIOBCtrls; // Set current pointer
+        }
+
+        public int CCCS_Actions.CCCSA_SetTrigger(bool bState)
+        {
+            Console.WriteLine("Set trigger state: " + (bState ? "true" : "false"));
+            if (m_pCIOB.CIOBCTRL_Set_Trigger(bState) != NoError) return CARTE_ERROR; // return error
+            return CODE_OK;
+        }
+
+        public void CCCS_Actions.CCCSA_Release()
+        {
+            // Désallocation des handles d'événements
+            Console.WriteLine("Verification des threads et handle");
+            m_stStatuParam.m_DeviceConnected = CODE_ERROR; // end off thread
+            //CCCSA_CloseThread(&m_thMulticast);
+            CCCSA_CloseAcqSpectre();
+        }
+
+        public void CCCS_Actions.CCCSA_OpenAcqSpectre()
+        {
+            m_DisplaySignalEvent = new ManualResetEvent(false);
+            m_AvailableSignalEvent = new ManualResetEvent(false);
+            CCCSA_OpenThread(ref m_thAcqSpectre, AcqSpectrum, this); // Acquisition des spectres.
+        }
+
+        public void CCCS_Actions.CCCSA_CloseAcqSpectre()
+        {
+            Console.WriteLine("Fermeture du thread acquisition");
+            CCCSA_CloseThread(ref m_thAcqSpectre);
+            if (m_DisplaySignalEvent != null)
+            {
+                m_DisplaySignalEvent.Close();
+                m_DisplaySignalEvent = null;
+            }
+            if (m_AvailableSignalEvent != null)
+            {
+                m_AvailableSignalEvent.Close();
+                m_AvailableSignalEvent = null;
+            }
+        }
+
+        public void CCCS_Actions.CCCSA_InitThread(threadparam tht)
+        {
+            tht.m_dwThreadId = 0;
+            tht.lpParameter = IntPtr.Zero;
+            int nIndex;
+            // create all events for process 
+            for (nIndex = 0; nIndex < EVENT_NUMBER; nIndex++)
+            {
+                tht.m_OnEvent[nIndex] = IntPtr.Zero;
+            }
+            tht.hThread = IntPtr.Zero;
+        }
+
+        public void CCCS_Actions.CCCSA_OpenThread(threadparam tht, ThreadStart lpStartAddress, IntPtr lpParam)
+        {
+            CCCSA_InitThread(tht); // Je ne sais pas s'il y a une fonction commme ça
+            int nIndex;
+            // create all events for process 
+            for (nIndex = 0; nIndex < EVENT_NUMBER; nIndex++)
+            {
+                tht.m_OnEvent[nIndex] = CreateEvent(IntPtr.Zero, false, false, null);
+            }
+            tht.lpParameter = lpParam;
+            tht.hThread = CreateThread(IntPtr.Zero, 0, lpStartAddress, tht.lpParameter, 0, out tht.m_dwThreadId);
+        }
+
+        public void CCCS_Actions.CCCSA_CloseThread(threadparam tht, uint dwMilliseconds)
+        {
+            if (tht.hThread != IntPtr.Zero)
+            {
+                SetEvent(tht.m_OnEvent[EVENT_KILL_THREAD]);
+                if (WaitForSingleObject(tht.m_OnEvent[EVENT_KILL_THREAD_DO], dwMilliseconds) != WAIT_OBJECT_0)
+                {
+                    TerminateThread(tht.hThread, 0);
+                }
+                CloseHandle(tht.hThread);
+                tht.hThread = IntPtr.Zero;
+            }
+            int nIndex;
+            // release process events
+            for (nIndex = 0; nIndex < EVENT_NUMBER; nIndex++)
+            {
+                if (tht.m_OnEvent[nIndex] != IntPtr.Zero)
+                {
+                    CloseHandle(tht.m_OnEvent[nIndex]);
+                    tht.m_OnEvent[nIndex] = IntPtr.Zero;
+                }
+            }
+            tht.lpParameter = IntPtr.Zero;
+            tht.m_dwThreadId = 0;
+        }
+
+        //FIXME - Fonctions du CBIOCTRL
+        public void CCCS_Actions.CCCSA_RaCLuxP(float fAlpha, float fBeta, float fGamma)
+        {
+            float fIntensity = 0.0f;
+            // generate float array data
+            m_pCIOB.CIOBCTRL_Read_Photo_Detector(ref fIntensity);
+            // generate led power
+            m_fPuissance = fAlpha * fIntensity * fIntensity + fBeta * fIntensity + fGamma;
+        }
+
+        //
+
+        public int CCCSA_Test_Spectrometre_Centrage()
+        {
+            // Variable declaration
+            int iErr = CODE_OK;
+            int BufferIndex = -1;
+            int MeasureIndex = -1;
+            float fAvr = 0.0f;
+            char[] banswer = new char[200];
+            string cstrValue;
+            uint Events = 0;
+            // Channel and Lamps table
+            short shErr = MCHR_ERROR_NONE;
+            float[,] SpectrumData = new float[20, 2];
+            string cstrValidDataBR = " : Valide";
+            string cstrValidDataBV = " : Valide";
+            string cstrValidDataBB = " : Valide";
+            string cstrValidDataIR = " : Valide";
+            string cstrValidDataIV = " : Valide";
+            string cstrValidDataIB = " : Valide";
+
+            // Erase memory for red acquisition
+            Array.Clear(banswer, 0, 200);
+            Array.Clear(SpectrumData, 0, 20 * 2);
+            m_OffsetEn = false; // set subtraction of offset
+
+            if (m_stStatuParam.m_bParametersStatus.m_Pixel == CODE_OK &&
+                m_stStatuParam.m_bParametersStatus.m_RLedMax == CODE_OK &&
+                m_stStatuParam.m_bParametersStatus.m_RLedMin == CODE_OK &&
+                m_stStatuParam.m_bParametersStatus.m_GLedMax == CODE_OK &&
+                m_stStatuParam.m_bParametersStatus.m_GLedMin == CODE_OK &&
+                m_stStatuParam.m_bParametersStatus.m_BLedMax == CODE_OK &&
+                m_stStatuParam.m_bParametersStatus.m_BLedMin == CODE_OK)
+            {
+                switch (m_stStatuParam.m_iCcsType)
+                {
+                    case MCHR_CCS_ULTIMA:
+                        MessageBox.Show("D�connectez la source x�non.");
+                        m_ccsStop.Lock(); // Lock section
+                        Trace.WriteLine("Lock send LPA3 from centrage test\r\n");
+                        iErr = CCCSA_SetConsole("MCHR_SendCommand ", MCHR_SendCommand(m_iID, "LPA3", banswer)); // change source
+                        break;
+                    case MCHR_CCS_INITIAL:
+                    case MCHR_CCS_PRIMA:
+                    case MCHR_CCS_OPTIMA:
+                    case MCHR_CCS_OPTIMA_PLUS:
+                    case MCHR_CCS_EXTREMA:
+                    case MCHR_STIL_VIZIR:
+                        m_ccsStop.Lock(); // Lock section
+                        Trace.WriteLine("Lock set led 0 from centrage test\r\n");
+                        iErr = CCCSA_SetConsole("MCHR_SendCommand ", MCHR_SendCommand(m_iID, "LPA1", banswer));
+                        CCCSA_SetConsole(CCCSA_CStringFormat("MCHR_SetLed ", 0), MCHR_SetLed(m_iID, 0));
+                        break;
+                    default:
+                        iErr = CODE_ERROR;
+                        break;
+                }
+
+                CCCSA_SetConsole("Impossible de changer la fr�quence d'acquisition", MCHR_SetScanRate(m_iID, m_wScanRate));
+                m_ccsStop.Unlock(); // Unlock section
+                Trace.WriteLine("Unlock from centrage test\r\n");
+
+                // Set Red Led to On
+                if (CCCSA_SetConsole("Allumage led rouge", (int)m_pCIOB.CIOBCTRL_Set_Red_Led(true)) != CODE_OK)
+                {
+                    iErr = CARTE_ERROR; // switch on red led
+                    cstrValidDataBR = ": pas test�"; // Set information on report
+                    cstrValidDataIR = ": inconnue"; // Set information on report
+                }
+                else
+                {
+                    if (CCCSA_SetConsole("Allumage led vert", (int)m_pCIOB.CIOBCTRL_Set_Green_Led(true)) != CODE_OK)
+                    {
+                        iErr = CARTE_ERROR; // switch on green led
+                        cstrValidDataBV = ": pas test�"; // Set information on report
+                        cstrValidDataIV = ": inconnue"; // Set information on report
+                    }
+                    else
+                    {
+                        if (CCCSA_SetConsole("Allumage led bleu", (int)m_pCIOB.CIOBCTRL_Set_Blue_Led(true)) != CODE_OK)
+                        {
+                            iErr = CARTE_ERROR; // switch on blue led
+                            cstrValidDataBB = ": pas test�"; // Set information on report
+                            cstrValidDataIB = ": inconnue"; // Set information on report
+                        }
+                        else if (iErr == CODE_OK)
+                        {
+                            Thread.Sleep(1000);
+                            if (CCCSA_Barycenter(m_pAcqSig1, m_BarySig1) != CODE_OK) // calculate barycenter
+                            {
+                                cstrValidDataBR = ": erreur de pic"; // Set information on report
+                                cstrValidDataBV = ": erreur de pic"; // Set information on report
+                                cstrValidDataBB = ": erreur de pic"; // Set information on report
+                                cstrValidDataIR = ": erreur de pic"; // Set information on report
+                                cstrValidDataIV = ": erreur de pic"; // Set information on report
+                                cstrValidDataIB = ": erreur de pic"; // Set information on report
+                                iErr = CODE_ERROR;
+                            }
+                            else
+                            {
+                                if (m_BarySig1[2, 1] > (float)m_stInfoParam.m_CenterMaxRLed || m_BarySig1[2, 1] < (float)m_stInfoParam.m_CenterMinRLed) // verify if it's a good value
+                                {
+                                    cstrValidDataBR = " : Pas Valide";
+                                    iErr = CODE_ERROR; // return error code
+                                }
+                                if (m_BarySig1[1, 1] > (float)m_stInfoParam.m_CenterMaxGLed || m_BarySig1[1, 1] < (float)m_stInfoParam.m_CenterMinGLed) // verify if it's a good value
+                                {
+                                    cstrValidDataBV = " : Pas Valide";
+                                    iErr = CODE_ERROR; // return error code
+                                }
+                                if (m_BarySig1[0, 1] > (float)m_stInfoParam.m_CenterMaxBLed || m_BarySig1[0, 1] < (float)m_stInfoParam.m_CenterMinBLed) // verify if it's a good value
+                                {
+                                    cstrValidDataBB = " : Pas Valide";
+                                    iErr = CODE_ERROR; // return error code
+                                }
+                                if (m_BarySig1[2, 0] > (float)m_stInfoParam.m_SeuilMaxRLed || m_BarySig1[2, 0] < (float)m_stInfoParam.m_SeuilMinRLed) // verify if it's a good value
+                                {
+                                    cstrValidDataIR = " : Pas Valide";
+                                    iErr = CODE_ERROR; // return error code
+                                }
+                                if (m_BarySig1[1, 0] > (float)m_stInfoParam.m_SeuilMaxGLed || m_BarySig1[1, 0] < (float)m_stInfoParam.m_SeuilMinGLed) // verify if it's a good value
+                                {
+                                    cstrValidDataIV = " : Pas Valide";
+                                    iErr = CODE_ERROR; // return error code
+                                }
+                                if (m_BarySig1[0, 0] > (float)m_stInfoParam.m_SeuilMaxBLed || m_BarySig1[0, 0] < (float)m_stInfoParam.m_SeuilMinBLed) // verify if it's a good value
+                                {
+                                    cstrValidDataIB = " : Pas Valide";
+                                    iErr = CODE_ERROR; // return error code
+                                }
+                            }
+                        }
+                        else
+                        {
+                            cstrValidDataBR = ": pas test�"; // Set information on report
+                            cstrValidDataBV = ": pas test�"; // Set information on report
+                            cstrValidDataBB = ": pas test�"; // Set information on report
+                            cstrValidDataIR = ": inconnue"; // Set information on report
+                            cstrValidDataIV = ": inconnue"; // Set information on report
+                            cstrValidDataIB = ": inconnue"; // Set information on report
+                            iErr = CODE_ERROR; // erreur valide
+                        }
+                    }
+                }
+            }
+            else
+            {
+                cstrValidDataBR = ": pas test�"; // Set information on report
+                cstrValidDataBV = ": pas test�"; // Set information on report
+                cstrValidDataBB = ": pas test�"; // Set information on report
+                cstrValidDataIR = ": pas test�"; // Set information on report
+                cstrValidDataIV = ": pas test�"; // Set information on report
+                cstrValidDataIB = ": pas test�"; // Set information on report
+                iErr = CODE_ERROR; // erreur valide
+            }
+            m_pCIOB.CIOBCTRL_Set_Green_Led(false);
+            m_pCIOB.CIOBCTRL_Set_Blue_Led(false);
+            m_pCIOB.CIOBCTRL_Set_Red_Led(false);
+            m_pInfoReport.Add(CCCSA_CStringFormat(CCCSA_CStringFormat("Barycentre rouge", (float)m_stInfoParam.m_CenterMinRLed, (float)m_stInfoParam.m_CenterMaxRLed), m_BarySig1[2, 1]) + cstrValidDataBR); // Set information on report
+            m_pInfoReport.Add(CCCSA_CStringFormat(CCCSA_CStringFormat("Barycentre vert", (float)m_stInfoParam.m_CenterMinGLed, (float)m_stInfoParam.m_CenterMaxGLed), m_BarySig1[1, 1]) + cstrValidDataBV); // Set information on report
+            m_pInfoReport.Add(CCCSA_CStringFormat(CCCSA_CStringFormat("Barycentre bleu", (float)m_stInfoParam.m_CenterMinBLed, (float)m_stInfoParam.m_CenterMaxBLed), m_BarySig1[0, 1]) + cstrValidDataBB); // Set information on report
+            m_pInfoReport.Add(CCCSA_CStringFormat(CCCSA_CStringFormat("Intensit� rouge", (float)m_stInfoParam.m_SeuilMinRLed, (float)m_stInfoParam.m_SeuilMaxRLed), m_BarySig1[2, 0]) + cstrValidDataIR); // Set information on report
+            m_pInfoReport.Add(CCCSA_CStringFormat(CCCSA_CStringFormat("Intensit� vert", (float)m_stInfoParam.m_SeuilMinGLed, (float)m_stInfoParam.m_SeuilMaxGLed), m_BarySig1[1, 0]) + cstrValidDataIV); // Set information on report
+            m_pInfoReport.Add(CCCSA_CStringFormat(CCCSA_CStringFormat("Intensit� bleu", (float)m_stInfoParam.m_SeuilMinBLed, (float)m_stInfoParam.m_SeuilMaxBLed), m_BarySig1[0, 0]) + cstrValidDataIB); // Set information on report
+            m_pInfoReport.Add(""); // Set information on report
+            return iErr;
+        }
+
+        //
+
+        //
+
+        public int CCCS_Actions.CCCSA_Test_Sorties_ANA()
+        {
+            short iRet = 0;
+            uint u32Count = 0;
+            ushort[] u16iv1 = new ushort[AI_BUFFERSIZE];
+            ushort[] u16iv2 = new ushort[AI_BUFFERSIZE];
+            ushort[] u16iv3 = new ushort[AI_BUFFERSIZE];
+            ushort[] u16iv4 = new ushort[AI_BUFFERSIZE];
+            int iv1 = -1, iv2 = -1, iv3 = -1, iv4 = -1, iErr = CODE_OK;
+            double f64Voltage = 0.0;
+            float fv1 = 0.0f, fv2 = 0.0f, fv3 = 0.0f, fv4 = 0.0f;
+
+            // envoyer commandes pour mettre +10V
+            short shRet = 0;
+            char[] banswer = new char[100];
+            string cstrValidAO1_p10v = " : Valide";
+            string cstrValidAO1_m10v = " : Valide";
+            string cstrValidAO2_p10v = " : Valide";
+            string cstrValidAO2_m10v = " : Valide";
+
+            //Erase memory
+            Array.Clear(u16iv1, 0, AI_BUFFERSIZE);
+            Array.Clear(u16iv2, 0, AI_BUFFERSIZE);
+            Array.Clear(u16iv3, 0, AI_BUFFERSIZE);
+            Array.Clear(u16iv4, 0, AI_BUFFERSIZE);
+
+            if (m_stStatuParam.m_bBenchStatus == true && m_stStatuParam.m_bParametersStatus.m_AnalogMax == CODE_OK && m_stStatuParam.m_bParametersStatus.m_AnalogMin == CODE_OK)
+            {
+                Console.WriteLine("Lock CCCSA_Test_Sorties_ANA 1");
+                m_ccsStop.Lock(); //Lock section
+
+                if (CCCSA_SetConsole("Selection de analog output", MCHR_SendCommand(m_iID, "DBW106,0", banswer)) == CODE_OK)
+                {
+                    // lire entrée analogique 1 et 2
+                    if (CCCSA_SetConsole("Ecriture de analog output 1", MCHR_SendCommand(m_iID, "DBW136,0", banswer)) == CODE_OK)
+                    {
+                        if (CCCSA_SetConsole("Ecriture de analog output 2", MCHR_SendCommand(m_iID, "DBW137,19193131008", banswer)) == CODE_OK)
+                        {
+                            m_ccsStop.Unlock(); //Unlock section
+
+                            CCCSA_SetConsole("Lecture analog output 1", (int)m_pCIOB.CIOBCTRL_Read_AnalogOutputs1(u16iv1, AI_BUFFERSIZE, ref u32Count));
+                            CCCSA_GetAvr(u16iv1, ref iv1, u32Count);
+                            m_pCIOB.CIOBCTRL_AIconvert(iv1, ref f64Voltage);
+                            fv1 = (float)f64Voltage;
+                            m_pInfoReport.Add(CCCSA_CStringFormat(CCCSA_CStringFormat("Analog output 1 test +10v", m_stInfoParam.m_AnalogRateMax, -1.0f), fv1)); //print values in report
+                            f64Voltage = 0.0;
+
+                            CCCSA_SetConsole("Lecture analog output 2", (int)m_pCIOB.CIOBCTRL_Read_AnalogOutputs2(u16iv2, AI_BUFFERSIZE, ref u32Count));
+                            CCCSA_GetAvr(u16iv2, ref iv2, u32Count);
+                            m_pCIOB.CIOBCTRL_AIconvert(iv2, ref f64Voltage);
+                            fv2 = (float)f64Voltage;
+                            m_pInfoReport.Add(CCCSA_CStringFormat(CCCSA_CStringFormat("Analog output 2 test +10v", m_stInfoParam.m_AnalogRateMax, -1.0f), fv2));
+                            f64Voltage = 0.0;
+                        }
+                        else
+                        {
+                            m_ccsStop.Unlock(); //Unlock section
+                            Console.WriteLine("Unlock CCCSA_Test_Sorties_ANA 1");
+                            m_pInfoReport.Add(new string("Valeur analog output 2 test +10V (Value) Impossible d'écrire le port")); //print error report
+                        }
+                    }
+                    else
+                    {
+                        m_ccsStop.Unlock(); //Unlock section
+                        m_pInfoReport.Add(new string("Valeur analog output 2 test +10V (Value) Impossible d'écrire le port")); //print error report
+                    }
+
+                    m_ccsStop.Lock(); //Lock section
+                    // lire entrée analogique 1 et 2
+                    if (CCCSA_SetConsole("Ecriture analog output 1", MCHR_SendCommand(m_iID, "DBW136,0000000000", banswer)) == CODE_OK)
+                    {
+                        if (CCCSA_SetConsole("Ecriture analog output 2", MCHR_SendCommand(m_iID, "DBW137,0000000000", banswer)) == CODE_OK)
+                        {
+                            m_ccsStop.Unlock(); //Unlock section
+
+                            CCCSA_SetConsole("Lecture analog output 1", (int)m_pCIOB.CIOBCTRL_Read_AnalogOutputs1(u16iv3, AI_BUFFERSIZE, ref u32Count));
+                            CCCSA_GetAvr(u16iv3, ref iv3, u32Count);
+                            m_pCIOB.CIOBCTRL_AIconvert(iv3, ref f64Voltage);
+                            fv3 = (float)f64Voltage;
+                            m_pInfoReport.Add(CCCSA_CStringFormat(CCCSA_CStringFormat("Analog output 1 test -10v", m_stInfoParam.m_AnalogRateMin, -1.0f), fv3)); //print values in report
+                            f64Voltage = 0.0;
+
+                            CCCSA_SetConsole("Lecture analog output 2", (int)m_pCIOB.CIOBCTRL_Read_AnalogOutputs2(u16iv4, AI_BUFFERSIZE, ref u32Count));
+                            CCCSA_GetAvr(u16iv4, ref iv4, u32Count);
+                            m_pCIOB.CIOBCTRL_AIconvert(iv4, ref f64Voltage);
+                            fv4 = (float)f64Voltage;
+                            m_pInfoReport.Add(CCCSA_CStringFormat(CCCSA_CStringFormat("Analog output 2 test -10v", m_stInfoParam.m_AnalogRateMin, -1.0f), fv4));
+                            f64Voltage = 0.0;
+                        }
+                        else
+                        {
+                            m_ccsStop.Unlock(); //Unlock section
+                            m_pInfoReport.Add(new string("Analog output 2 test -10v: Impossible d'écrire le port")); //print error report
+                        }
+                    }
+                    else
+                    {
+                        m_ccsStop.Unlock(); //Unlock section
+                        m_pInfoReport.Add(new string("Analog output test -10v: Impossible d'écrire le port")); //print error report
+                    }
+                }
+                else
+                {
+                    m_pInfoReport.Add(new string("Valeur analog output 1 test +10v: Impossible d'écrire le port")); //print error report
+                    m_pInfoReport.Add(new string("Valeur analog output 2 test +10v: Impossible d'écrire le port"));
+                    m_pInfoReport.Add(new string("Valeur analog output 1 test -10v: Impossible d'écrire le port"));
+                    m_pInfoReport.Add(new string("Valeur analog output 2 test -10v: Impossible d'écrire le port"));
+                }
+            }
+            else
+            {
+                m_pInfoReport.Add(new string("Valeur analog output 1 test +10v: Pas testé")); //print error report
+                m_pInfoReport.Add(new string("Valeur analog output 2 test +10v: Pas testé"));
+                m_pInfoReport.Add(new string("Valeur analog output 1 test -10v: Pas testé"));
+                m_pInfoReport.Add(new string("Valeur analog output 2 test -10v: Pas testé"));
+            }
+
+            // Vérification.
+            if (iErr == CODE_OK)
+            {
+                if (fv1 < m_stInfoParam.m_AnalogRateMax)
+                {
+                    cstrValidAO1_p10v = new string(" : Pas Valide");
+                    iErr = CODE_ERROR; //not good value
+                }
+                if (fv2 < m_stInfoParam.m_AnalogRateMax)
+                {
+                    cstrValidAO2_p10v = new string(" : Pas Valide");
+                    iErr = CODE_ERROR; //not good value
+                }
+                if (fv3 > m_stInfoParam.m_AnalogRateMin)
+                {
+                    cstrValidAO1_m10v = new string(" : Pas Valide");
+                    iErr = CODE_ERROR; //not good value
+                }
+                if (fv4 > m_stInfoParam.m_AnalogRateMin)
+                {
+                    cstrValidAO2_m10v = new string(" : Pas Valide");
+                    iErr = CODE_ERROR; //not good value
+                }
+                m_pInfoReport[m_pInfoReport.Count - 4] = m_pInfoReport[m_pInfoReport.Count - 4] + cstrValidAO1_p10v; //print error report
+                m_pInfoReport[m_pInfoReport.Count - 3] = m_pInfoReport[m_pInfoReport.Count - 3] + cstrValidAO2_p10v;
+                m_pInfoReport[m_pInfoReport.Count - 2] = m_pInfoReport[m_pInfoReport.Count - 2] + cstrValidAO1_m10v;
+                m_pInfoReport[m_pInfoReport.Count - 1] = m_pInfoReport[m_pInfoReport.Count - 1] + cstrValidAO2_m10v;
+            }
+            return iErr;
+        }
+
+        //FIXME - Il y a des fonctions unconnu (MCHR_SetLed(m_iID, percent))
+        public int CCCSA_TensionCourantZenith(int percent, ref float Puissance)
+        {
+            int iErr = CODE_OK;
+            int iMoy = 100;
+            float fCourant = 0.0f;
+            float fTension = 0.0f;
+            float fCourantSum = 0.0f;
+            float fTensionSum = 0.0f;
+
+            if (m_pCIOB.GetType() == typeof(CIOBoardControlMCC))
+            {
+                Puissance = 0.0f;
+
+                CCCSA_SetConsole("MCHR set led", MCHR_SetLed(m_iID, percent));
+                Thread.Sleep(500);
+
+                string cstr;
+
+                cstr = string.Format("Courant attendue {0:F1} A", (m_stInfoParam.m_fCourantMin + m_stInfoParam.m_fCourantMax) / 2.0f);
+                for (int i = 0; i < iMoy; i++)
+                {
+                    ((CIOBoardControlMCC)m_pCIOB).CIOBCTRL_GetCourantAI(ref fCourant); //FIXME - Peut-être qu'il a des problèmes là
+                    fCourantSum += fCourant;
+                }
+                fCourant = fCourantSum / (float)iMoy;
+                fCourant *= m_stStatuParam.m_fCoefficientCourant;
+
+                if (fCourant > m_stInfoParam.m_fCourantMax || fCourant < m_stInfoParam.m_fCourantMin)
+                {
+                    iErr = CODE_ERROR;
+                    m_pInfoReport.Add(string.Format("{0} : pas valide", string.Format(string.Format(cstr, m_stInfoParam.m_fCourantMin, m_stInfoParam.m_fCourantMax), fCourant)))); //print values in report
+                }
+                else
+                {
+                    m_pInfoReport.Add(string.Format("{0} : Valide", string.Format(string.Format(cstr, m_stInfoParam.m_fCourantMin, m_stInfoParam.m_fCourantMax), fCourant)))); //print values in report
+                }
+
+                cstr = string.Format("Tension attendue {0:F1} V", (m_stInfoParam.m_fTensionMin + m_stInfoParam.m_fTensionMax) / 2.0f);
+                for (int i = 0; i < iMoy; i++)
+                {
+                    ((CIOBoardControlMCC)m_pCIOB).CIOBCTRL_GetTensionAI(ref fTension);
+                    fTensionSum += fTension;
+                }
+                fTension = fTensionSum / (float)iMoy;
+                fTension *= m_stStatuParam.m_fCoefficientTension;
+
+                if (fTension > m_stInfoParam.m_fTensionMax || fTension < m_stInfoParam.m_fTensionMin)
+                {
+                    iErr = CODE_ERROR;
+                    m_pInfoReport.Add(string.Format("{0} : pas valide", string.Format(string.Format(cstr, m_stInfoParam.m_fTensionMin, m_stInfoParam.m_fTensionMax), fTension)))); //print values in report
+                }
+                else
+                {
+                    m_pInfoReport.Add(string.Format("{0} : Valide", string.Format(string.Format(cstr, m_stInfoParam.m_fTensionMin, m_stInfoParam.m_fTensionMax), fTension)))); //print values in report
+                }
+
+                string l_csPuissance;
+                Puissance = fTension * fCourant;
+                l_csPuissance = string.Format(": {0} Watt", Puissance);
+                m_pInfoReport.Add(string.Format("Puissance d'alimentation mesurée LED {0}{1}", percent, l_csPuissance)); //print values in report
+            }
+            else
+            {
+                iErr = CODE_ERROR;
+            }
+
+            return iErr;
+        }
+
+        public int CCCSA_Test_Des_Triggers_In(enControllerFamily _enControllerFamily)
+        {
+            int iErr = CODE_OK, iErr1 = CODE_OK;
+            float fAvr = -1;
+            ulong Event;
+            char[] banswer = new char[200];
+            float[][] pArrayIntensity = new float[1][];
+            MCHR_tyAcqParam AcqParameters = new MCHR_tyAcqParam(); //FIXME - Problème
+
+            // create thread to generate rising edge on CCS
+            IntPtr hBreakAcquisitionEvent = CreateEvent(IntPtr.Zero, false, false, null);
+
+            // init variable
+            Array.Clear(banswer, 0, banswer.Length);
+            Array.Clear(AcqParameters, 0, AcqParameters.Length);
+
+            if (m_stStatuParam.m_bBenchStatus == true)
+            {
+                // Allocation of memory space for stocking the measured data
+                for (int i = 0; i < 1; i++)
+                {
+                    pArrayIntensity[i] = new float[1024];
+                }
+
+                // creation of synchronization events
+                AcqParameters.TriggerFlag = true;
+                AcqParameters.TriggerType = MCHR_TYPE_TRG;
+                AcqParameters.NumberPointsTRE = 1;
+                AcqParameters.HighLevelOrRisingEdgeActivated = MCHR_RISING_EDGE;
+                AcqParameters.NumberOfBuffers = 1;
+                AcqParameters.BufferLength = 1024;
+                AcqParameters.NumberOfPointsBeforeSignal = 0;
+                AcqParameters.NumberOfPoints = 0;
+                AcqParameters.EventEndBuffer = IntPtr.Zero;
+                AcqParameters.EventAcquire_n_Points = IntPtr.Zero;
+                AcqParameters.EventEndAcquire = IntPtr.Zero;
+                AcqParameters.EventEndMeasurement = IntPtr.Zero;
+                AcqParameters.EventStartingAcquisition = hBreakAcquisitionEvent;
+
+                m_ccsStop.Lock();
+                Console.WriteLine("Lock trigger in\r\n");
+                iErr = CCCSA_SetConsole("Get data", MCHR_GetAltitudeMeasurement(m_iID, AcqParameters, IntPtr.Zero, pArrayIntensity, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero));
+
+                if (iErr == CODE_OK)
+                {
+                    Event = WaitForSingleObject(hBreakAcquisitionEvent, 1000);
+
+                    switch (Event)
+                    {
+                        case WAIT_OBJECT_0:
+                            iErr = CODE_ERROR;
+                            m_pInfoReport.Add(string.Format("Detection trigger in {0}", _enControllerFamily == enControllerFamily.ZENITH ? " 24V" : "") + " auto d�clench�");
+                            break;
+
+                        default:
+                            // envoi de l'impulsion:
+                            m_pCIOB.CIOBCTRL_SendTriggerPulse();
+
+                            Event = WaitForSingleObject(hBreakAcquisitionEvent, 1000);
+
+                            switch (Event)
+                            {
+                                case WAIT_OBJECT_0:
+                                    m_pInfoReport.Add(string.Format("Detection trigger in {0}", _enControllerFamily == enControllerFamily.ZENITH ? " 24V" : "") + " : Valide");
+                                    break;
+
+                                default:
+                                    iErr = CODE_ERROR;
+                                    m_pInfoReport.Add(string.Format("Detection trigger in {0}", _enControllerFamily == enControllerFamily.ZENITH ? " 24V" : "") + " : Pas Valide");
+                                    break;
+                            }
+                            break;
+                    }
+                }
+                else
+                {
+                    m_pInfoReport.Add(string.Format("Detection trigger in {0}", _enControllerFamily == enControllerFamily.ZENITH ? " 24V" : "") + " : Impossible de mettre en mode trigger");
+                }
+
+                CloseHandle(hBreakAcquisitionEvent);
+
+                for (int i = 0; i < 1; i++)
+                {
+                    pArrayIntensity[i] = null;
+                }
+
+                MCHR_Abort(m_iID); //FIXME - Problème
+                m_ccsStop.Unlock();
+                Console.WriteLine("Unlock trigger in\r\n");
+            }
+            else
+            {
+                iErr = CODE_ERROR;
+                m_pInfoReport.Add(string.Format("Detection trigger in {0}", _enControllerFamily == enControllerFamily.ZENITH ? " 24V" : "") + " : D�connect�e");
+            }
+
+            return iErr;
+        }
+
+        public int CCCSA_Test_Des_Triggers_Out()
+        {
+            ushort u16iv = 0;
+            int iErr = CODE_OK, iCnt = 0;
+            bool bUp = false, bEqual = false, bDown = false;
+            uint dwIDThread;
+            IntPtr hTriggerOut = IntPtr.Zero;
+
+            // create thread to start acquisition
+            if (m_stStatuParam.m_bBenchStatus == true)
+            {
+                hTriggerOut = CreateThread(IntPtr.Zero, 0, DelayedStartAcqTrgo, this, 0, out dwIDThread);
+
+                do
+                {
+                    m_pCIOB.CIOBCTRL_Read_SyncOut(ref u16iv);
+
+                    if (u16iv > 0 && bUp == false)
+                    {
+                        bUp = true;
+                    }
+                    else if (u16iv == 0 && bUp == true && bEqual == false)
+                    {
+                        bEqual = true;
+                    }
+                    else if (u16iv == 0 && bEqual == true && bDown == false)
+                    {
+                        bDown = true;
+                        break;
+                    }
+
+                    iCnt++;
+                } while ((bEqual == true && bUp == true && bDown == true) || (iCnt < 200));
+
+                if (iCnt >= 200 && (bEqual != true || bUp != true || bDown != true))
+                {
+                    iErr = CODE_ERROR;
+                    m_pInfoReport.Add("D�tection trigger out: Pas valide");
+                }
+                else
+                {
+                    iErr = CODE_OK;
+                    m_pInfoReport.Add("D�tection trigger out: Valide");
+                }
+
+                if (hTriggerOut != IntPtr.Zero)
+                {
+                    TRACE("Fermeture du thread counters\r\n");
+                    WaitForSingleObject(hTriggerOut, INFINITE);
+                    hTriggerOut = IntPtr.Zero;
+                }
+            }
+            else
+            {
+                iErr = CODE_ERROR;
+                m_pInfoReport.Add("D�tection trigger out: Non connect�e");
+            }
+
+            return iErr;
+        }
+
+        //
+
+        public int CCCSA_Test_Des_Codeurs()
+        {
+            int iErr = CODE_OK;
+
+            // reset des codeurs
+            if (CCCSA_ResetDesCodeurs() == CODE_ERROR)
+                return CODE_ERROR;
+
+            // boucle sur les 3 codeurs
+            // temporaires
+            uint C1, C2, C3;
+            // avant apres
+            uint iAvantC1 = 0, iAvantC2 = 0, iAvantC3 = 0;
+            uint iApresC1 = 0, iApresC2 = 0, iApresC3 = 0;
+            uint iDeltaC1 = 0, iDeltaC2 = 0, iDeltaC3 = 0;
+
+            // lecture des codeurs
+            for (int i = 1; i < 4; i++)
+            {
+                if (CCCSA_LectureCodeurs(out C1, out C2, out C3) == CODE_OK)
+                {
+                    // lu
+                    // on mémorise les valeurs avant
+                    if (i == 1) iAvantC1 = C1;
+                    if (i == 2) iAvantC2 = C2;
+                    if (i == 3) iAvantC3 = C3;
+                }
+                else
+                {
+                    // erreur
+                    m_pInfoReport.Add("Codeur 1: Pas testé");
+                    m_pInfoReport.Add("Codeur 2: Pas testé");
+                    m_pInfoReport.Add("Codeur 3: Pas testé");
+                    return CODE_ERROR;
+                }
+
+                // envoi des pas
+                m_pCIOB.CIOBCTRL_DOCnt(i, NBR_PAS_ENVOI_CODEUR, T_STATE0_CODEUR, T_STATE1_CODEUR, LEFT);
+
+                // lecture des codeurs
+                if (CCCSA_LectureCodeurs(out C1, out C2, out C3) == CODE_OK)
+                {
+                    // lu
+                    // on mémorise les valeurs apres
+                    if (i == 1) iApresC1 = C1;
+                    if (i == 2) iApresC2 = C2;
+                    if (i == 3) iApresC3 = C3;
+                }
+                else
+                {
+                    // erreur
+                    m_pInfoReport.Add("Codeur 1: Pas testé");
+                    m_pInfoReport.Add("Codeur 2: Pas testé");
+                    m_pInfoReport.Add("Codeur 3: Pas testé");
+                    return CODE_ERROR;
+                }
+            }
+
+            // Calcul des pas effectués
+            if (iApresC1 > iAvantC1)
+            {
+                iDeltaC1 = iApresC1 - iAvantC1;
+            }
+            else
+            {
+                iDeltaC1 = iAvantC1 - iApresC1;
+            }
+
+            if (iApresC2 > iAvantC2)
+            {
+                iDeltaC2 = iApresC2 - iAvantC2;
+            }
+            else
+            {
+                iDeltaC2 = iAvantC2 - iApresC2;
+            }
+
+            if (iApresC3 > iAvantC3)
+            {
+                iDeltaC3 = iApresC3 - iAvantC3;
+            }
+            else
+            {
+                iDeltaC3 = iAvantC3 - iApresC3;
+            }
+
+            // Test Final
+            if (iDeltaC1 == NBR_PAS_ENVOI_CODEUR * 4)
+            {
+                m_pInfoReport.Add(string.Format("Codeur 1: {0} : Valide", float(NBR_PAS_ENVOI_CODEUR * 4), -1.0f));
+            }
+            else
+            {
+                m_pInfoReport.Add(string.Format("Codeur 1: {0} : Pas valide", float(NBR_PAS_ENVOI_CODEUR * 4), -1.0f));
+                iErr = CODE_ERROR;
+            }
+
+            if (iDeltaC2 == NBR_PAS_ENVOI_CODEUR * 4)
+            {
+                m_pInfoReport.Add(string.Format("Codeur 2: {0} : Valide", float(NBR_PAS_ENVOI_CODEUR * 4), -1.0f));
+            }
+            else
+            {
+                m_pInfoReport.Add(string.Format("Codeur 2: {0} : Pas valide", float(NBR_PAS_ENVOI_CODEUR * 4), -1.0f));
+                iErr = CODE_ERROR;
+            }
+
+            if (iDeltaC3 == NBR_PAS_ENVOI_CODEUR * 4)
+            {
+                m_pInfoReport.Add(string.Format("Codeur 3: {0} : Valide", float(NBR_PAS_ENVOI_CODEUR * 4), -1.0f));
+            }
+            else
+            {
+                m_pInfoReport.Add(string.Format("Codeur 3: {0} : Pas valide", float(NBR_PAS_ENVOI_CODEUR * 4), -1.0f));
+                iErr = CODE_ERROR;
+            }
+
+            // comment est-on arrivé ici ????
+            return iErr;
+        }
+
+        public int CCCSA_Test_Des_Codeurs_Zenith(bool bSetDefaultValue, ushort bDirection)
+        {
+            char[] txt = new char[char.MaxValue];
+            int iErr = CODE_OK;
+            
+            if (bSetDefaultValue)
+            {
+                m_cSelectionCodeur = m_stInfoParam.m_iSelectionCodeur;
+                m_pCIOB.CIOBCTRL_Set_Digital_Output(ENCODER_SEL_0_DOChannel, (bool)(m_cSelectionCodeur & 0x01));
+                m_pCIOB.CIOBCTRL_Set_Digital_Output(ENCODER_SEL_1_DOChannel, (bool)((m_cSelectionCodeur & 0x02) >> 1));
+                m_pCIOB.CIOBCTRL_Set_Digital_Output(ENCODER_SEL_2_DOChannel, (bool)((m_cSelectionCodeur & 0x04) >> 2));
+                Thread.Sleep(2000);
+                
+                // reset dos codeurs
+                if (CCCSA_ResetDesCodeurs_Zenith() == CODE_ERROR)
+                    return CODE_ERROR;
+                
+                // setar valor padrão dos codeurs
+                if (CCCSA_ValeurDefautCodeurs_Zenith(CCCS_ValeurDefautDebutCodeur()) == CODE_ERROR)
+                    return CODE_ERROR;
+            }
+            
+            // boucle sur les 3 codeurs 
+		    // temporaires:
+            uint[] C = new uint[ZENITH_ENCODER_COUNT];
+            uint[] iAvantC = new uint[ZENITH_ENCODER_COUNT];
+            uint[] iApresC = new uint[ZENITH_ENCODER_COUNT];
+            uint[] iDeltaC = new uint[ZENITH_ENCODER_COUNT];
+            
+            // leitura dos codeurs
+            if (CCCSA_LectureCodeurs_Zenith(C, ZENITH_ENCODER_COUNT) == CODE_OK)
+            {
+                // lu
+			    // on m�morise les valeurs avant
+                for (int i = 0; i < ZENITH_ENCODER_COUNT; i++)
+                {
+                    iAvantC[i] = C[i];
+                }
+            }
+            else
+            {
+                return CODE_ERROR;
+            }
+            
+            // envoi des pas
+            m_pCIOB.CIOBCTRL_DOCnt(0, NBR_PAS_ENVOI_CODEUR, T_STATE0_CODEUR, T_STATE1_CODEUR, bDirection);
+            
+            // lecture des codeurs
+            if (CCCSA_LectureCodeurs_Zenith(C, ZENITH_ENCODER_COUNT) == CODE_OK)
+            {
+                // lu
+			    // on m�morise les valeurs apres
+                for (int i = 0; i < ZENITH_ENCODER_COUNT; i++)
+                {
+                    iApresC[i] = C[i];
+                }
+            }
+            else
+            {
+                return CODE_ERROR;
+            }
+            
+            string ctxt;
+            
+            // Calcul des pas effectu�s
+            for (int i = 0; i < ZENITH_ENCODER_COUNT; i++)
+            {
+                if (m_cSelectionCodeur == i + 1 || m_cSelectionCodeur == 7)
+                {
+                    if (iApresC[i] > iAvantC[i])
+                    {
+                        iDeltaC[i] = iApresC[i] - iAvantC[i];
+                    }
+                    else
+                    {
+                        iDeltaC[i] = iAvantC[i] - iApresC[i];
+                    }
+                    
+                    // Test Final
+                    txt = string.Format("Codeur {0}", i + 1).ToCharArray();
+                    
+                    if (iDeltaC[i] == NBR_PAS_ENVOI_CODEUR * 4)
+                    {
+                        ctxt = CCCSA_CStringFormat(CCCSA_CStringFormat(new string(txt), (float)iAvantC[i], -1.0f), (float)iApresC[i]) + " : Valide";
+                    }
+                    else
+                    {
+                        ctxt = CCCSA_CStringFormat(CCCSA_CStringFormat(new string(txt), (float)iAvantC[i], -1.0f), (float)iApresC[i]) + " : Pas valide";
+                        iErr = CODE_ERROR;
+                    }
+                }
+                else
+                {
+                    // erreur
+                    txt = string.Format("Codeur {0}", i + 1).ToCharArray();
+                    
+                    if (iDeltaC[i] == NBR_PAS_ENVOI_CODEUR * 4)
+                    {
+                        ctxt = CCCSA_CStringFormat(CCCSA_CStringFormat(new string(txt), (float)iAvantC[i], -1.0f), (float)iApresC[i]) + " : Pas testé";
+                    }
+                    else
+                    {
+                        ctxt = CCCSA_CStringFormat(CCCSA_CStringFormat(new string(txt), (float)iAvantC[i], -1.0f), (float)iApresC[i]) + " : Pas testé";
+                    }
+                }
+                
+                m_pInfoReport.Add(ctxt);
+            }
+            
+            // comment est-on arriv� ici ????
+            return iErr;
+        }
+
+        public int CCCSA_Test_Des_Ports_Serie(enTypeLink shLinkType)
+        {
+            // connecter le ccs en port serie avec la DLL.
+            short shErr = MCHR_ERROR_NONE;
+            char[] bResponse = new char[400];
+            int iErr = CODE_OK;
+            Array.Clear(bResponse, 0, bResponse.Length); //reset response memory
+
+            m_stStatuParam.m_DeviceConnected = CODE_ERROR; //end off thread
+            if (!CCCSA_IsZenith())
+            {
+                if (CCCSA_Disconnect() == CODE_OK && CCCSA_Connect(SERIAL_232, 115200) == CODE_OK)
+                {
+                    // envoyer une commande pour tester ( VER? )
+                    if (CCCSA_Test_Commande_VER(SERIAL_232) != CODE_OK)
+                    {
+                        iErr = CODE_ERROR;
+                    }
+                }
+                else
+                {
+                    m_pInfoReport.Add(new CString("Port RS232 : pas r�ussi � se connecter")); //set report
+                    iErr = CODE_ERROR;
+                }
+            }
+            if (CCCSA_Disconnect() == CODE_OK && CCCSA_Connect(SERIAL_422, 115200) == CODE_OK)
+            {
+                // envoyer une commande pour tester ( VER? )
+                if (CCCSA_Test_Commande_VER(SERIAL_422) != CODE_OK)
+                {
+                    iErr = CODE_ERROR;
+                }
+            }
+            else
+            {
+                m_pInfoReport.Add(new string("Port RS422 : pas r�ussi � se connecter"));
+                iErr = CODE_ERROR;
+            }
+            CCCSA_Disconnect();
+            CCCSA_Connect(shLinkType);
+            return iErr;
+        }
+
         
+        /////////////
+        public void CCCSA_SetAppDir(string AppDir)
+        {
+            m_cstrAppDir = AppDir;
+        }
+
+        public void CCCSA_SetAppFilePath(string AppFilePath)
+        {
+            m_cstrAppFilePath = AppFilePath;
+        }
+
+        public void CCCSA_SetSelected_ethernet_card(int Selected_ethernet_card)
+        {
+            m_iSelected_ethernet_card = Selected_ethernet_card;
+            m_stAppParam.m_iSelected_ethernet_card = m_iSelected_ethernet_card;
+        }
+
+        public void CCCSA_SetIOBoardControlType(enIOBoardControl IOBoardControlType)
+        {
+            m_enIOBoardControlType = IOBoardControlType;
+        }
+
+        public void CCCSA_SetDeviceDetected(int DeviceDetected)
+        {
+            m_stStatuParam.m_DeviceDetected = DeviceDetected;
+        }
+
+        //
+
+        int m_iChannelCount;
+
+        public long CCCSA_GetAcquisitionFrequency()
+        {
+            Console.WriteLine("Get Acquisition Frequency: " + m_lAcquisitionFrequency);
+            return m_lAcquisitionFrequency; // return free frequency
+        }
+
+        public ushort CCCSA_GetAverage()
+        {
+            Console.WriteLine("Get Average: " + m_wAverage);
+            return m_wAverage; // return average
+        }
+
+        public int CCCS_TriggerInPulseCount()
+        {
+            return (int)(0.5 * ((double)m_stInfoParam.m_iTriggerOutRateMax + (double)m_stInfoParam.m_iTriggerOutRateMin));
+        }
+
+        //
+
+        public int CCCS_ValeurDefautDebutCodeur()
+        {
+            return m_stInfoParam.m_iEncoderMin;
+        }
+
+        //
+
+        public IntPtr CCCSA_DisplaySignalEvent()
+        {
+            return m_DisplaySignalEvent;
+        }
+
+        public IntPtr CCCSA_AvailableSignalEvent()
+        {
+            return m_AvailableSignalEvent;
+        }
+
+        public string CCCSA_GetDiagnosticFilePath()
+        {
+            return m_cstrDiagnosticFilePath;
+        }
+
+        public string CCCSA_GetReportFileName()
+        {
+            return m_cstrReportFileName;
+        }
+
+        public string CCCSA_GetReportFolder()
+        {
+            return m_cstrReportFolder;
+        }
+
+        public stReportInfo CCCSA_GetInfoParam()
+        {
+            return m_stInfoParam;
+        }
         /* Partie privée */
 
         /* FIXME - Faire les corrections sur les types:
