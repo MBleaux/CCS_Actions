@@ -453,7 +453,7 @@ namespace CCS_Actions
         Functions
         **************/
         //Constructor
-        CCCS_Actions(void);//create constructor
+        //CCCS_Actions(void);//create constructor
 
         //String format
         public static string CCCSA_CStringFormat(string cstrMessage, string cstrValue)
@@ -1074,7 +1074,7 @@ namespace CCS_Actions
 
         //FIXME - Il manque la fonction int CCCSA_Init_Zenith();
 
-        public int CCCS_Actions.CCCSA_Disconnect()
+        public int CCCSA_Disconnect()
         {
             // free event memory
             if (m_iID > 0)
@@ -1095,25 +1095,25 @@ namespace CCS_Actions
             return CODE_OK;
         }
 
-        public int CCCS_Actions.CCCSA_GetDeviceType()
+        public int CCCSA_GetDeviceType()
         {
             return m_stStatuParam.m_iCcsType;
         }
 
-        public void CCCS_Actions.CCCSA_SetIOControls(CIOBoardControl CIOBCtrls)
+        public void CCCSA_SetIOControls(CIOBoardControl CIOBCtrls)
         {
             Console.WriteLine("Set IO controls");
             m_pCIOB = CIOBCtrls; // Set current pointer
         }
 
-        public int CCCS_Actions.CCCSA_SetTrigger(bool bState)
+        public int CCCSA_SetTrigger(bool bState)
         {
             Console.WriteLine("Set trigger state: " + (bState ? "true" : "false"));
             if (m_pCIOB.CIOBCTRL_Set_Trigger(bState) != NoError) return CARTE_ERROR; // return error
             return CODE_OK;
         }
 
-        public void CCCS_Actions.CCCSA_Release()
+        public void CCCSA_Release()
         {
             // Désallocation des handles d'événements
             Console.WriteLine("Verification des threads et handle");
@@ -1122,14 +1122,14 @@ namespace CCS_Actions
             CCCSA_CloseAcqSpectre();
         }
 
-        public void CCCS_Actions.CCCSA_OpenAcqSpectre()
+        public void CCCSA_OpenAcqSpectre()
         {
             m_DisplaySignalEvent = new ManualResetEvent(false);
             m_AvailableSignalEvent = new ManualResetEvent(false);
             CCCSA_OpenThread(ref m_thAcqSpectre, AcqSpectrum, this); // Acquisition des spectres.
         }
 
-        public void CCCS_Actions.CCCSA_CloseAcqSpectre()
+        public void CCCSA_CloseAcqSpectre()
         {
             Console.WriteLine("Fermeture du thread acquisition");
             CCCSA_CloseThread(ref m_thAcqSpectre);
@@ -1145,7 +1145,7 @@ namespace CCS_Actions
             }
         }
 
-        public void CCCS_Actions.CCCSA_InitThread(threadparam tht)
+        public void CCCSA_InitThread(threadparam tht)
         {
             tht.m_dwThreadId = 0;
             tht.lpParameter = IntPtr.Zero;
@@ -1158,7 +1158,7 @@ namespace CCS_Actions
             tht.hThread = IntPtr.Zero;
         }
 
-        public void CCCS_Actions.CCCSA_OpenThread(threadparam tht, ThreadStart lpStartAddress, IntPtr lpParam)
+        public void CCCSA_OpenThread(threadparam tht, ThreadStart lpStartAddress, IntPtr lpParam)
         {
             CCCSA_InitThread(tht); // Je ne sais pas s'il y a une fonction commme ça
             int nIndex;
@@ -1171,7 +1171,7 @@ namespace CCS_Actions
             tht.hThread = CreateThread(IntPtr.Zero, 0, lpStartAddress, tht.lpParameter, 0, out tht.m_dwThreadId);
         }
 
-        public void CCCS_Actions.CCCSA_CloseThread(threadparam tht, uint dwMilliseconds)
+        public void CCCSA_CloseThread(threadparam tht, uint dwMilliseconds)
         {
             if (tht.hThread != IntPtr.Zero)
             {
@@ -1198,7 +1198,7 @@ namespace CCS_Actions
         }
 
         //FIXME - Fonctions du CBIOCTRL
-        public void CCCS_Actions.CCCSA_RaCLuxP(float fAlpha, float fBeta, float fGamma)
+        public void CCCSA_RaCLuxP(float fAlpha, float fBeta, float fGamma)
         {
             float fIntensity = 0.0f;
             // generate float array data
@@ -1380,7 +1380,7 @@ namespace CCS_Actions
 
         //
 
-        public int CCCS_Actions.CCCSA_Test_Sorties_ANA()
+        public int CCCSA_Test_Sorties_ANA()
         {
             short iRet = 0;
             uint u32Count = 0;
@@ -2037,7 +2037,665 @@ namespace CCS_Actions
             return iErr;
         }
 
-        
+        public int CCCSA_Test_Valeur_ADC_Zenith()
+        {
+            short shErr = MCHR_ERROR_NONE;
+            char[] bResponse = new char[400];
+            string csResponse, csResponseDec, csResponseHex;
+            int iErr = CODE_OK;
+            int curPos = 0;
+            Array.Clear(bResponse, 0, bResponse.Length); // reset response memory
+
+            // envoyer une commande pour tester (VER?)
+            m_ccsStop.Lock(); // Lock section
+
+            if (CCCSA_SetConsole("Send command ACA?", MCHR_SendCommand(m_iID, "ACA?", bResponse)) == CODE_OK)
+            {
+                csResponse = new string(bResponse);
+                csResponseDec = csResponse.Tokenize("ACA?", ref curPos);
+                csResponseHex = string.Format("0x{0}", int.Parse(csResponseDec));
+                if (csResponseHex.IndexOf("32C8") >= 0)
+                {
+                    m_pInfoReport.Add(CCCSA_CStringFormat("Valeur ADC OK : {0}", csResponseHex)); // set report
+                }
+                else
+                {
+                    m_pInfoReport.Add(CCCSA_CStringFormat("Valeur ADC NOK : {0}", csResponseHex)); // set report
+                }
+                m_ccsStop.Unlock(); // Unlock section
+            }
+            else
+            {
+                m_pInfoReport.Add(new string("Valeur ADC : échec")); // set report
+                m_ccsStop.Unlock(); // Unlock section
+                return CODE_ERROR;
+            }
+            return iErr;
+        }
+
+        public int CCCSA_Test_Commande_VER(enTypeLink shLinkType)
+        {
+            // connecter le ccs en port serie avec la DLL.
+            short shErr = MCHR_ERROR_NONE;
+            char[] bResponse = new char[400];
+            int iErr = CODE_OK;
+            Array.Clear(bResponse, 0, bResponse.Length); // reset response memory
+
+            // envoyer une commande pour tester (VER)
+            m_ccsStop.Lock(); // Lock section
+
+            string msg = shLinkType == enTypeLink.USB ? "USB Send command VER : "
+                : (shLinkType == enTypeLink.SERIAL_232 ? "SERIAL_232 Send command VER : "
+                    : (shLinkType == enTypeLink.SERIAL_422 ? "SERIAL_422 Send command VER : "
+                        : (shLinkType == enTypeLink.ETHERNET ? "ETHERNET Send command VER : "
+                            : "")));
+
+            if (CCCSA_SetConsole(msg, MCHR_SendCommand(m_iID, "VER", bResponse)) == CODE_OK)
+            {
+                m_pInfoReport.Add(CCCSA_CStringFormat(msg, new string(bResponse))); // set report
+                m_szFirmwareVersion = new string(bResponse);
+                m_ccsStop.Unlock(); // Unlock section
+            }
+            else
+            {
+                m_pInfoReport.Add(CCCSA_CStringFormat(msg, new string("échec"))); // set report
+                m_ccsStop.Unlock(); // Unlock section
+                return CODE_ERROR;
+            }
+            return iErr;
+        }
+
+        public int CCCSA_Test_Counter()
+        {
+            // Inicializar variáveis
+            short i16Err = NoError;
+            int iErr = CODE_OK, BufferIndex = -1, MeasureIndex = -1;
+            float fAvr1 = -1.0f, fAvr2 = -1.0f;
+            switch (m_stStatuParam.m_iCcsType)
+            {
+                case MCHR_CCS_ULTIMA:
+                    m_ccsStop.Lock(); // Bloquear seção
+                    Console.WriteLine("Lock counters ULTIMA");
+                    iErr = CCCSA_SetConsole("Set scan rate", MCHR_SetScanRate(m_iID, MCHR_SCAN_RATE_CCS_ULTIMA_2000HZ));
+                    m_ccsStop.Unlock(); // Desbloquear seção
+                    Console.WriteLine("Unlock counters ULTIMA");
+                    if (iErr != CODE_OK)
+                    {
+                        m_pInfoReport->Add("Counter: pas test�"); // imprimir valores no relatório
+                    }
+                    break;
+                case MCHR_CCS_OPTIMA:
+                    m_ccsStop.Lock(); // Bloquear seção
+                    Console.WriteLine("Lock counters OPTIMA");
+                    iErr = CCCSA_SetConsole("Set scan rate", MCHR_SetScanRate(m_iID, MCHR_SCAN_RATE_CCS_OPTIMA_2000HZ));
+                    m_ccsStop.Unlock(); // Desbloquear seção
+                    Console.WriteLine("Unlock counters OPTIMA");
+                    if (iErr != CODE_OK)
+                    {
+                        m_pInfoReport->Add("Counter: pas test�"); // imprimir valores no relatório
+                    }
+                    break;
+                case MCHR_CCS_OPTIMA_PLUS:
+                    m_ccsStop.Lock(); // Bloquear seção
+                    Console.WriteLine("Lock counters OPTIMA PLUS");
+                    iErr = CCCSA_SetConsole("Set scan rate", MCHR_SetScanRate(m_iID, MCHR_SCAN_RATE_CCS_OPTIMA_PLUS_2500HZ));
+                    m_ccsStop.Unlock(); // Desbloquear seção
+                    Console.WriteLine("Unlock counters OPTIMA");
+                    if (iErr != CODE_OK)
+                    {
+                        m_pInfoReport->Add("Counter: pas test�"); // imprimir valores no relatório
+                    }
+                    break;
+                case MCHR_CCS_EXTREMA:
+                    m_ccsStop.Lock(); // Bloquear seção
+                    Console.WriteLine("Lock counters EXTREMA");
+                    iErr = CCCSA_SetConsole("Set scan rate", MCHR_SetScanRate(m_iID, MCHR_SCAN_RATE_CCS_EXTREMA_2500HZ));
+                    m_ccsStop.Unlock(); // Desbloquear seção
+                    Console.WriteLine("Unlock counters EXTREMA");
+                    if (iErr != CODE_OK)
+                    {
+                        m_pInfoReport->Add("Counter: pas test�"); // imprimir valores no relatório
+                    }
+                    break;
+                case MCHR_STIL_VIZIR:
+                    m_ccsStop.Lock(); // Bloquear seção
+                    Console.WriteLine("Lock counters OPTIMA");
+                    iErr = CCCSA_SetConsole("Set scan rate", MCHR_SetScanRate(m_iID, MCHR_SCAN_RATE_STIL_VIZIR_1000HZ));
+                    m_ccsStop.Unlock(); // Desbloquear seção
+                    Console.WriteLine("Unlock counters OPTIMA");
+                    if (iErr != CODE_OK)
+                    {
+                        m_pInfoReport->Add("Counter: pas test�"); // imprimir valores no relatório
+                    }
+                    break;
+                case MCHR_CCS_INITIAL:
+                case MCHR_CCS_PRIMA:
+                    m_ccsStop.Lock(); // Bloquear seção
+                    Console.WriteLine("Lock counters PRIMA");
+                    iErr = CCCSA_SetConsole("Set scan rate", MCHR_SetScanRate(m_iID, MCHR_SCAN_RATE_CCS_PRIMA_2000HZ));
+                    m_ccsStop.Unlock(); // Desbloquear seção
+                    Console.WriteLine("Unlock counters PRIMA");
+                    if (iErr != CODE_OK)
+                    {
+                        m_pInfoReport->Add(new CString("Counter: pas test�")); // imprimir valores no relatório
+                    }
+                    break;
+                default:
+                    iErr = CODE_ERROR;
+                    break;
+            }
+
+
+            if (iErr == CODE_OK && CCCSA_ReadCounters(out fAvr1, out fAvr2) == CODE_OK && fAvr1 == 32767)
+            {
+                m_pInfoReport->Add(CCCSA_CStringFormat("Compteur: <valeur max>:", fAvr1) + CCCSA_CStringFormat(" <index>:", fAvr2) + new CString(": Valide")); // imprimir valores no relatório
+            }
+            else
+            {
+                iErr = CODE_ERROR;
+                m_pInfoReport->Add(CCCSA_CStringFormat("Compteur: <valeur max>:", fAvr1) + CCCSA_CStringFormat(" <index>:", fAvr2) + new CString(": Pas valide")); // imprimir valores no relatório
+            }
+
+            return iErr; // retornar valor de erro atual
+        }
+
+        public int CCCSA_Test_SpectrumIntensity()
+        {
+            bool bSuccess = true;
+            m_ccsStop.Lock(); // Bloquear seção
+            CCCSA_SetConsole("MCHR set led 100", MCHR_SetLed(m_iID, 100));
+            m_ccsStop.Unlock(); // Desbloquear seção
+            MessageBox.Show("Branchez la fibre WhiteRef fixe");
+
+            // Testar a intensidade do espectro em 3 pixels do espectro
+            for (int iTest = 0; iTest < 3; iTest++)
+            {
+                // Verificar se o pixel não ultrapassa o espectro
+                if (m_stInfoParam.m_IntensityCheckPixPos[iTest] < m_stStatuParam.m_iNbrOfPixel)
+                {
+                    string sSignalLevel;
+                    int iIntensityAtThisPixel = m_pAcqSignal2[m_stInfoParam.m_IntensityCheckPixPos[iTest]];
+                    bool bOK = iIntensityAtThisPixel >= m_stInfoParam.m_LevelMinIntensity[iTest] && iIntensityAtThisPixel <= m_stInfoParam.m_LevelMaxIntensity[iTest];
+                    sSignalLevel = string.Format("Intensit� pixel {0} (de {1} � {2}) valeur {3} : {4}", m_stInfoParam.m_IntensityCheckPixPos[iTest], m_stInfoParam.m_LevelMinIntensity[iTest], m_stInfoParam.m_LevelMaxIntensity[iTest], iIntensityAtThisPixel, bOK ? "Valide" : "Non valide");
+                    bSuccess &= bOK;
+                    m_pInfoReport.Add(sSignalLevel);
+                }
+            }
+
+            return bSuccess ? CODE_OK : CODE_ERROR;
+        }
+
+        public int CCCSA_Test_Signal()
+        {
+            bool bSuccess = true;
+            MessageBox.Show("Branchez la fibre WhiteRef fixe");
+            CCCSA_WriteFile(m_cstrReportDir, m_pAcqSignal1, m_stStatuParam.m_iNbrOfPixel);
+
+            // On teste l'intensité du spectre sur 3 pixels du spectre
+            for (int iTest = 0; iTest < 3; iTest++)
+            {
+                // Vérifier que le pixel ne dépasse pas le spectre
+                if (m_stInfoParam.m_IntensityCheckPixPos[iTest] < m_stStatuParam.m_iNbrOfPixel)
+                {
+                    string sSignalLevel;
+                    int iIntensityAtThisPixel = m_pAcqSignal2[m_stInfoParam.m_IntensityCheckPixPos[iTest]];
+                    bool bOK = iIntensityAtThisPixel >= m_stInfoParam.m_LevelMinIntensity[iTest] && iIntensityAtThisPixel <= m_stInfoParam.m_LevelMaxIntensity[iTest];
+                    sSignalLevel = string.Format("Intensité pixel {0} (de {1} à {2}) valeur {3} : {4}", m_stInfoParam.m_IntensityCheckPixPos[iTest], m_stInfoParam.m_LevelMinIntensity[iTest], m_stInfoParam.m_LevelMaxIntensity[iTest], iIntensityAtThisPixel, bOK ? "Valide" : "Non valide");
+                    bSuccess &= bOK;
+                    m_pInfoReport.Add(sSignalLevel);
+                }
+                // if(
+            }
+
+            return bSuccess ? CODE_OK : CODE_ERROR;
+        }
+
+        public int CCCSA_Test_Signal_Dark_Zenith(bool bFirstCheck, bool _ask)
+        {
+            if (_ask == true)
+            {
+                MessageBox.Show("Débranchez la fibre du coffret");
+            }
+
+            bool bSuccess = true;
+            int iErr = CODE_OK, iIntensity = 0, iOFP = 0, iONP = 0;
+            string cscmdOFP = "OFP?", cscmdONP = "ONP?", csFileName;
+            char[] banswerOFP = new char[200];
+            char[] banswerONP = new char[200];
+            ushort ScanRateSign = m_stStatuParam.m_wScanRateSign;
+            ushort wMaxDarkRed = m_stInfoParam.m_SeuilMaxDark;
+            ushort wMaxDarkBlue = m_stInfoParam.m_SeuilMaxDark;
+            ushort wMaxDark = m_stInfoParam.m_SeuilMaxDark;
+            long lAcquisitionFrequency;
+            CDWhiteRef DWhiteRef = new CDWhiteRef();    //FIXME - Il faut reviser cette genre d'object
+            DWhiteRef.m_pCCSActions = this;             //FIXME - Il faut reviser cette genre d'object
+
+            if (bFirstCheck)
+            {
+                DWhiteRef.SetParams((float)m_stInfoParam.m_SeuilMaxDark, 0.0f, (float)m_stInfoParam.m_SeuilMaxDark, 0.0f, DARK);
+            }
+            else
+            {
+                DWhiteRef.SetParams((float)(m_wMaxDarkBlueThreshold + m_stInfoParam.m_SeuilDriftMaxDark), (float)(m_wMaxDarkBlueThreshold - m_stInfoParam.m_SeuilDriftMaxDark), (float)(m_wMaxDarkRedThreshold + m_stInfoParam.m_SeuilDriftMaxDark), (float)(m_wMaxDarkRedThreshold - m_stInfoParam.m_SeuilDriftMaxDark), DARK);
+            }
+
+            CCCSA_SetConsole("MCHR enable exposure time", MCHR_ZENITH_SetExposureTime(m_iID, false));
+            CCCSA_SetConsole("MCHR set led", MCHR_SetLed(m_iID, CENT));
+            CCCSA_SetAcquisitionFrequency(ref ScanRateSign, ref lAcquisitionFrequency);
+
+            if (bFirstCheck)
+            {
+                iErr = CCCSA_SetConsole("MCHR_SendCommand ", MCHR_SendCommand(m_iID, cscmdOFP, banswerOFP));
+                iErr = CCCSA_SetConsole("MCHR_SendCommand ", MCHR_SendCommand(m_iID, cscmdONP, banswerONP));
+                iOFP = int.Parse(new string(banswerOFP).Substring(4));
+                iONP = int.Parse(new string(banswerONP).Substring(4));
+            }
+
+            SetEvent(CCCSA_DisplaySignalEvent());
+            DWhiteRef.DoModal();
+            ResetEvent(CCCSA_DisplaySignalEvent());
+
+            string sSignalLevel;
+            string sSignalLevelFile;
+            bool bOK;
+
+            if (bFirstCheck)
+            {
+                if (0 < iOFP && 0 < iONP && iONP < m_stStatuParam.m_iNbrOfPixel)
+                {
+                    for (int iTest = iOFP; iTest < iOFP + iONP; iTest++)
+                    {
+                        iIntensity += m_pAcqSignal1[iTest];
+                    }
+
+                    iIntensity /= iONP;
+                    m_wOffset = iIntensity;
+                    bOK = iIntensity >= m_stInfoParam.m_iOffsetMin && iIntensity <= m_stInfoParam.m_iOffsetMax;
+                    sSignalLevel = string.Format("Test Offset : Intensité pixels de {0} à {1} (plage valide de {2} à {3}) valeur moyenne {4} : {5}", iOFP, iOFP + iONP, m_stInfoParam.m_iOffsetMin, m_stInfoParam.m_iOffsetMax, iIntensity, bOK ? "Valide" : "Non valide");
+                    bSuccess &= bOK;
+                    sSignalLevelFile += sSignalLevel + "\n";
+                    m_pInfoReport.Add(sSignalLevel);
+                }
+            }
+
+            CCCSA_GetMax(m_pAcqSignal1, m_stInfoParam.m_iBluePixelsDarkMin, m_stInfoParam.m_iBluePixelsDarkMin + m_stInfoParam.m_iBluePixelsDarkMax, ref wMaxDarkBlue);
+            bOK = wMaxDarkBlue < m_stInfoParam.m_SeuilMaxDark;
+
+            if (bFirstCheck)
+            {
+                sSignalLevel = string.Format("Test Dark Bleu : Intensité pixels de {0} à {1} (plage valide jusqu'à {2} exclus) valeur max {3} : {4}", m_stInfoParam.m_iBluePixelsDarkMin, m_stInfoParam.m_iBluePixelsDarkMax, m_stInfoParam.m_SeuilMaxDark, wMaxDarkBlue, bOK ? "Valide" : "Non valide");
+                bSuccess &= bOK;
+                sSignalLevelFile += sSignalLevel + "\n";
+                m_pInfoReport.Add(sSignalLevel);
+            }
+
+            CCCSA_GetMax(m_pAcqSignal1, m_stInfoParam.m_iRedPixelsDarkMin, m_stInfoParam.m_iRedPixelsDarkMin + m_stInfoParam.m_iRedPixelsDarkMax, ref wMaxDarkRed);
+
+            if (bFirstCheck)
+            {
+                bOK = wMaxDarkRed < m_stInfoParam.m_SeuilMaxDark;
+                sSignalLevel = string.Format("Test Dark : Intensité pixels de {0} à {1} (plage valide jusqu'à {2} exclus) valeur max {3} : {4}", m_stInfoParam.m_iRedPixelsDarkMin, m_stInfoParam.m_iRedPixelsDarkMax, m_stInfoParam.m_SeuilMaxDark, wMaxDarkRed, bOK ? "Valide" : "Non valide");
+                bSuccess &= bOK;
+                sSignalLevelFile += sSignalLevel + "\n";
+                m_pInfoReport.Add(sSignalLevel);
+                csFileName = m_cstrReportDir + "\\TestDarkSignal.sig";
+                CCCSA_WriteFile(csFileName, m_pAcqSignal1, m_stStatuParam.m_iNbrOfPixel, ref sSignalLevelFile);
+                m_wMaxDarkThreshold = Math.Max(m_wMaxDarkRedThreshold = wMaxDarkRed, m_wMaxDarkBlueThreshold = wMaxDarkBlue);
+            }
+            else
+            {
+                wMaxDark = Math.Max(wMaxDarkRed, wMaxDarkBlue);
+                bOK = m_wMaxDarkBlueThreshold - m_stInfoParam.m_SeuilDriftMaxDark < wMaxDarkBlue && m_wMaxDarkBlueThreshold + m_stInfoParam.m_SeuilDriftMaxDark > wMaxDarkBlue;
+                sSignalLevel = string.Format("Test Dark Bleu : Intensité pixels de {0} à {1} (plage valide de {2} à {3}) valeur max {4} : {5}", m_stInfoParam.m_iBluePixelsDarkMin, m_stStatuParam.m_iNbrOfPixel, m_wMaxDarkBlueThreshold - m_stInfoParam.m_SeuilDriftMaxDark, m_wMaxDarkBlueThreshold + m_stInfoParam.m_SeuilDriftMaxDark, wMaxDarkBlue, bOK ? "Valide" : "Non valide");
+                m_pInfoReport.Add(sSignalLevel);
+                bOK &= m_wMaxDarkRedThreshold - m_stInfoParam.m_SeuilDriftMaxDark < wMaxDarkRed && m_wMaxDarkRedThreshold + m_stInfoParam.m_SeuilDriftMaxDark > wMaxDarkRed;
+                sSignalLevel = string.Format("Test Dark : Intensité pixels de {0} à {1} (plage valide de {2} à {3}) valeur max {4} : {5}", m_stInfoParam.m_iRedPixelsDarkMin, m_stStatuParam.m_iNbrOfPixel, m_wMaxDarkRedThreshold - m_stInfoParam.m_SeuilDriftMaxDark, m_wMaxDarkRedThreshold + m_stInfoParam.m_SeuilDriftMaxDark, wMaxDarkRed, bOK ? "Valide" : "Non valide");
+                bSuccess = bOK;
+                m_pInfoReport.Add(sSignalLevel);
+            }
+            return bSuccess ? CODE_OK : CODE_ERROR;
+        }
+
+        public int CCCSA_Test_Signal_WRef_Zenith()
+        {
+            MessageBox.Show("Branchez l'outillage WhiteRef fixe au coffret");
+
+            /*
+            bool bSuccess = true;
+            int iErr = CODE_OK;
+            ushort wIntensity = 0;
+            string csFileName;
+            ushort ScanRateMeas = m_stStatuParam.m_wScanRateMeas;
+            long lAcquisitionFrequency;
+            CCCSA_SetConsole("MCHR set led", MCHR_SetLed(m_iID, 100));
+            CCCSA_SetAcquisitionFrequency(ref ScanRateMeas, out lAcquisitionFrequency);
+            SetEvent(CCCSA_DisplaySignalEvent());
+            while (WaitForSingleObject(CCCSA_AvailableSignalEvent(), 1000) != WAIT_OBJECT_0) ;
+            ResetEvent(CCCSA_DisplaySignalEvent());
+            string sSignalLevel;
+            bool bOK;
+            CCCSA_GetMax(m_pAcqSignal1, 0, m_stStatuParam.m_iNbrOfPixel, out wIntensity);
+            bOK = wIntensity >= m_stInfoParam.m_SeuilMinWhiteRef && wIntensity < m_stInfoParam.m_SeuilMaxWhiteRef;
+            sSignalLevel = string.Format("Intensit� pixels de {0} � {1} (plage valide de {2} � {3}) valeur max {4} : {5}", 0, m_stStatuParam.m_iNbrOfPixel, m_stInfoParam.m_SeuilMinWhiteRef, m_stInfoParam.m_SeuilMaxWhiteRef, wIntensity, bOK ? "Valide" : "Non valide");
+            bSuccess &= bOK;
+            m_pInfoReport.Add(sSignalLevel);
+            csFileName = Path.Combine(m_cstrReportDir, "TestWRefSignal.sig");
+            CCCSA_WriteFile(csFileName, m_pAcqSignal1, m_stStatuParam.m_iNbrOfPixel, sSignalLevel);
+            return bSuccess ? CODE_OK : CODE_ERROR;
+            //*/
+
+            // Chamada à função CCCSA_Test_Signal_Zenith(WREF, CENT) em C#
+            return CCCSA_Test_Signal_Zenith(WREF, CENT);
+        }
+
+        public int CCCSA_Test_Signal_LED_Zenith(bool _ask)
+        {
+            bool bSuccess = true;
+            if (_ask == true)
+            {
+                MessageBox.Show("Branchez l'outillage WhiteRef fixe");
+            }
+            bSuccess &= (CODE_OK == CCCSA_Test_Signal_Zenith(LED, CINQUANTE));
+            bSuccess &= (CODE_OK == CCCSA_Test_Signal_Zenith(LED, DIX));
+            return bSuccess ? CODE_OK : CODE_ERROR;
+        }
+
+        public int CCCSA_Test_Signal_Expo_Zenith(bool _ask)
+        {
+            bool bSuccess = true;
+            if (_ask == true)
+            {
+                MessageBox.Show("Branchez l'outillage WhiteRef fixe");
+            }
+            bSuccess &= (CODE_OK == CCCSA_Test_Signal_Zenith(EXPO, CINQUANTE));
+            bSuccess &= (CODE_OK == CCCSA_Test_Signal_Zenith(EXPO, DIX));
+            return bSuccess ? CODE_OK : CODE_ERROR;
+        }
+
+        //
+
+        public int CCCSA_TestNumeroDeSerie()
+        {
+            if (CCCSA_Disconnect() == CODE_OK && CCCSA_Connect(USB, 0, true) == CODE_OK)
+            {
+                return CODE_OK;
+            }
+            else
+            {
+                return CODE_ERROR;
+            }
+        }
+
+        public int CCCS_Actions_CCCSA_TestTempsCommutationVoies()
+        {
+            bool aleatoire = true; // a mettre dans .ini
+            int nbSwapsWanted = m_stInfoParam.m_iNbSwaps; // a mettre dans .ini
+            ushort channel, channelOld;
+            int iLoop;
+            double timeStampStart, timeStampEnd, execTime;
+            double averageST = 0.0, minST = 100000, maxST = 0.0;
+            int iErr = CODE_OK;
+            ushort nbVoies = m_iChannelCount;
+            MCHR_ID idSensor = m_iID;
+            channelOld = nbVoies;
+            switch (m_stStatuParam.m_iCcsType)
+            {
+                case MCHR_CCS_PRIMA:
+                    if (nbVoies < 2)
+                    {
+                        m_pInfoReport.Add("Test des temps de commutation inapplicable sur prima 1 voie\r\n");
+                        iErr = CODE_ERROR;
+                    }
+                    else
+                    {
+                        averageST = 0.0;
+                        minST = 100000;
+                        maxST = 0.0;
+                        m_ccsStop.Lock(); // Lock section
+                        Console.WriteLine("Test des temps de commutation entre voies\r\n");
+                        for (iLoop = 0; iLoop < nbSwapsWanted; iLoop++)
+                        {
+                            channel = (ushort)((iLoop % 4) + 1);
+                            if (aleatoire)
+                            {
+                                do
+                                {
+                                    channel = (ushort)(nbVoies * new Random().NextDouble() + 1);
+                                } while (channel == channelOld);
+                            }
+                            timeStampStart = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                            iErr = CCCSA_SetConsole("Changement de voie\r\n", MCHR_SetMultiplexChannel(idSensor, channel));
+                            timeStampEnd = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                            execTime = ((timeStampEnd - timeStampStart) / 1000.0); // em ms
+
+                            // maj moy/min/max
+                            averageST += execTime;
+                            if (execTime > maxST)
+                                maxST = execTime;
+                            if (execTime < minST)
+                                minST = execTime;
+                            channelOld = channel;
+                        }
+                        averageST /= (double)(iLoop - 1);
+                        string sTemp;
+                        m_pInfoReport.Add("Temps de commutation\r\n");
+                        sTemp = string.Format(" Pour {0} changements de voies (moy : {1:F2}, max : {2:F2}), mesure (moy, min, max): ({3:F2}, {4:F2}, {5:F2}) ms",
+                            m_stInfoParam.m_iNbSwaps, m_stInfoParam.m_fMaxAverageSwapTimeAccepted, m_stInfoParam.m_fMaxSwapTimeAccepted,
+                            (float)(averageST), (float)(minST), (float)(maxST));
+                        m_pInfoReport.Add(CCCSA_CStringFormat(sTemp));
+                        m_ccsStop.Unlock(); // Lock section
+                        if (averageST > m_stInfoParam.m_fMaxAverageSwapTimeAccepted || maxST > m_stInfoParam.m_fMaxSwapTimeAccepted) // test failed
+                            iErr = CODE_ERROR;
+                    }
+                    break;
+                case MCHR_CCS_OPTIMA:
+                case MCHR_CCS_ULTIMA:
+                default:
+                    m_pInfoReport.Add("Capteur non supporte\r\n");
+                    iErr = CODE_ERROR;
+                    break;
+            }
+            return iErr;
+        }
+
+        public int CCCS_Actions_CCCSA_GetFirmwareVersion()
+        {
+            // Variable declaration
+            char[] txt = new char[200];
+            int iErr = CODE_OK;
+
+            m_ccsStop.Lock();
+            if (CCCSA_SetConsole("Lecture de la version du firmware", MCHR_GetFirmwareVersion(m_iID, txt, 200)) != CODE_OK) // return error
+                iErr = CODE_ERROR;
+            else
+            {
+                m_pInfoReport.Add("Version de firmware : " + new string(txt));
+                Console.WriteLine("Firmware version: " + new string(txt) + "\r\n");
+            }
+            m_ccsStop.Unlock();
+            return iErr;
+        }
+
+        public void CCCS_Actions_CCCSA_SetLEDType(int iType)
+        {
+            m_stStatuParam.m_bParametersStatus.m_iTypeLED = iType;
+            m_stInfoParam.m_iTypeLED = iType;
+            switch (iType)
+            {
+                case 0:
+                    m_pInfoReport.Add("Type de LED : \r\n");
+                    break;
+                case 1:
+                    m_pInfoReport.Add("Type de LED : CREE\r\n");
+                    break;
+                default:
+                    m_pInfoReport.Add("Problème sur le type de LED!\r\n");
+                    break;
+            }
+        }
+
+        public int CCCS_Actions_CCCSA_GetLEDType()
+        {
+            if (m_stInfoParam.m_iTypeLED == 0)
+            {
+                if (m_stStatuParam.m_bParametersStatus.m_iTypeLED == 0)
+                    return 0;
+                else
+                    return m_stStatuParam.m_bParametersStatus.m_iTypeLED;
+            }
+            else
+                return m_stInfoParam.m_iTypeLED;
+        }
+
+        public int CCCS_Actions_CCCSA_StartDiagnostic()
+        {
+            int iErr = CODE_OK;
+            bool includeCrashDumpToDiag = false;
+            ASYNCDIAGNOSTIC_ZENITH DownloadingDiagInfo = new ASYNCDIAGNOSTIC_ZENITH(); //FIXME - Il faut reviser cette genre d'object
+            for (int i = 0; i < MAX_NBR_PATH; i++)
+            {
+                DownloadingDiagInfo.groupFiles[i].pInfoFile = IntPtr.Zero;
+            }
+            DownloadingDiagInfo.pInstance = this;
+            string cstrAppDir = m_cstrReportDir + "\\";
+            if (PathFileExists(cstrAppDir) && cstrAppDir.Length > 2)
+            {
+                string sTargetZipFileName;
+                CCCSA_GetDiagnosticInfo_ZENITH(ref DownloadingDiagInfo, includeCrashDumpToDiag);
+                CCCSA_InitDiagnosticFile_ZENITH(cstrAppDir.GetBuffer(), out sTargetZipFileName, ref DownloadingDiagInfo);
+                CCCSA_OpenThread(ref m_thDiagnostic, CCCSA_GetDiagnosticThread_ZENITH, ref DownloadingDiagInfo);
+                CCCSA_CloseThread(ref m_thDiagnostic, 300 * STANDARD_TIMEOUT);
+            }
+            ReleaseDiagnosticInfo(ref DownloadingDiagInfo);
+            return iErr;
+        }
+
+        public int CCCS_Actions_CCCSA_GetMax(float[] pArrayData, int iSPos, ref float fMax)
+        {
+            float fMeasMax = 0;
+            for (int iMeasPos = iSPos; iMeasPos < m_stStatuParam.m_iNbrOfPixel; iMeasPos++)
+            {
+                if (pArrayData[iMeasPos] > fMeasMax)
+                {
+                    fMeasMax = pArrayData[iMeasPos];
+                }
+            }
+            fMax = fMeasMax;
+            return CODE_OK;
+        }
+
+        public int CCCS_Actions_CCCSA_GetMax(float[] pArrayData, int iSPos, int iEPos, ref float fMax)
+        {
+            float fMeasMax = 0;
+            for (int iMeasPos = iSPos; iMeasPos < iEPos; iMeasPos++)
+            {
+                if (pArrayData[iMeasPos] > fMeasMax)
+                {
+                    fMeasMax = pArrayData[iMeasPos];
+                }
+            }
+            fMax = fMeasMax;
+            return CODE_OK;
+        }
+
+        public int CCCS_Actions_CCCSA_GetMax(ushort[] pArrayData, int iSPos, int size, out ushort wMax)
+        {
+            ushort wMeasMax = 0;
+            for (int iMeasPos = iSPos; iMeasPos < size; iMeasPos++)
+            {
+                if (pArrayData[iMeasPos] > wMeasMax)
+                {
+                    wMeasMax = pArrayData[iMeasPos];
+                }
+            }
+            wMax = wMeasMax;
+            return CODE_OK;
+        }
+
+        public void CCCS_Actions_CCCSA_GetAvr(ushort[] pArrayData, out int iAvr, uint u32Count)
+        {
+            float sum = 0.0f;
+            if (u32Count > 0)
+            {
+                for (uint i = 0; i < u32Count; i++)
+                {
+                    sum += pArrayData[i];
+                }
+                sum /= u32Count;
+            }
+            iAvr = (int)sum;
+        }
+
+        public void CCCS_Actions_CCCSA_Offset(ushort[] pwData, int iFirstPos, int iLastPos, float[] pfData, bool bSub)
+        {
+            Debug.Assert(pwData != null);
+            float fAvr = 0.0f;
+            int iPos = 0;
+            bool bSubTmp = false;
+            if (iFirstPos >= 0 && iLastPos < m_stStatuParam.m_iNbrOfPixel)
+            {
+                for (iPos = iFirstPos; iPos < iLastPos; iPos++)
+                {
+                    Debug.Assert(iPos >= 0 && iPos < 2048);
+                    fAvr += pwData[iPos]; // calculate Sum
+                }
+                fAvr /= (float)(iLastPos - iFirstPos + 1); // Calculate
+                bSubTmp = bSub; // Save configuration
+            }
+            for (iPos = 0; iPos < m_stStatuParam.m_iNbrOfPixel; iPos++)
+            {
+                Debug.Assert(iPos >= 0 && iPos < 2048);
+                if (bSubTmp)
+                {
+                    pfData[iPos] = pwData[iPos] - fAvr; // Subtract offset
+                    if (pfData[iPos] < 0) pfData[iPos] = 0;
+                }
+                else
+                {
+                    pfData[iPos] = pwData[iPos]; // Convert data
+                }
+            }
+        }
+
+        //
+
+        //
+
+        public int CCCS_Actions_CCCSA_ResetDesCodeurs()
+        {
+            // Encoder buffer Initialization
+            m_ccsStop.Lock(); // Lock section
+            Console.WriteLine("Lock reset codeur");
+            int iErr = CCCSA_SetConsole("Centrage de codeurs", MCHR_RecenterEncoders(m_iID, true, true, true));
+            m_ccsStop.Unlock(); // Lock section
+            Console.WriteLine("Unlock reset codeur");
+            return iErr;
+        }
+
+        //
+
+        public int CCCSA_ResetDesCodeurs_Zenith()
+        {
+            m_ccsStop.Lock();
+            Console.WriteLine("Lock reset codeur");
+            int iErr = CCCSA_SetConsole("Centrage de codeurs", MCHR_ResetEncoders(m_iID
+                ///*
+                , true
+                , true
+                , true
+                , true
+                , true));//*/
+                /*
+                , m_cSelectionCodeur == 1 || m_cSelectionCodeur == 7
+                , m_cSelectionCodeur == 2 || m_cSelectionCodeur == 7
+                , m_cSelectionCodeur == 3 || m_cSelectionCodeur == 7
+                , m_cSelectionCodeur == 4 || m_cSelectionCodeur == 7
+                , m_cSelectionCodeur == 5 || m_cSelectionCodeur == 7));//*/
+            m_ccsStop.Unlock();
+            Console.WriteLine("Unock reset codeur");
+            return iErr;
+        }
+
         /////////////
         public void CCCSA_SetAppDir(string AppDir)
         {
