@@ -332,7 +332,43 @@ namespace CCS_Actions
 
         // Add structure for exchange only raw buffer, conversion to any type of structure depends of operationCode
 
-        //FIXME - Il faut reviser ces types de variables
+        public enum enMode
+        {
+            DEVICE_MODE = 1, // BP002
+            HOST_MODE = 10, // SOFTWARE APPLICATION, PROCESS
+            UNDEFINED_MODE = 100
+        }
+
+        public enum enOperationCode
+        {
+            UNDEFINED_OPCODE = 0,
+            //SOFTWARE APPLICATION, PROCESS OpCode
+            NET_DEV_DISCOVER_OPCODE = 1,
+            NET_DEV_GET_CFG_OPCODE = 2,
+            NET_DEV_SET_CFG_OPCODE = 3,
+            NET_DEV_RESERVED_1 = 5,
+            NET_DEV_RESERVED_2,
+            NET_DEV_RESERVED_3,
+            NET_DEV_RESERVED_4,
+            //BP002 OpCode
+            ACK_NET_DEV_DISCOVER_OPCODE = HOST_MODE + NET_DEV_DISCOVER_OPCODE,
+            ACK_NET_DEV_GET_CFG_OPCODE = HOST_MODE + NET_DEV_GET_CFG_OPCODE,
+            ACK_NET_DEV_SET_CFG_OPCODE = HOST_MODE + NET_DEV_SET_CFG_OPCODE,
+            SND_CFG_OPCODE = HOST_MODE + NET_DEV_SET_CFG_OPCODE + 1,
+            NET_DEV_RESERVED_5,
+            NET_DEV_RESERVED_6,
+            NET_DEV_RESERVED_7,
+            NET_DEV_RESERVED_8,
+            NB_OperationCode = SND_CFG_OPCODE + 1
+        }
+        public const int MAC_ADDRESS_LEN = 6;
+
+        public struct HostConfig
+        {
+            public int ProcessID;
+            public char[] MACAddr_RO = new char[6];
+        }
+
         struct readDataParam_t
         {
             enOperationCode operationcode;
@@ -342,7 +378,7 @@ namespace CCS_Actions
 
         //private parameters
 
-        //FIXME - Il faut reviser ces types de variables: CString (string) , BOOL (bool), stValidateParameters (il est defini en haut) , enChrType (il est defini en haut)
+        //Il faut reviser ces types de variables: CString (string) , BOOL (bool), stValidateParameters (il est defini en haut) , enChrType (il est defini en haut)
         struct stParameters
         {
             //Private variable value
@@ -363,10 +399,10 @@ namespace CCS_Actions
             public float m_fCoefficientCourant;
         };
 
-        //FIXME - Il faut tester si ce façon marche bien
+        // Il faut tester si ce façon marche bien
         public struct listenparam_t
         {
-            public char[] ifaddr;
+            public char[] ifaddr = new char[16];
             public int timeoutMilliseconds;
             public short shDeviceNumber;
         }
@@ -384,7 +420,7 @@ namespace CCS_Actions
         // KL_24-08-2020 fill path from BP to save by FTP
         enum enFtpPath { _DEFAULT_PATH, _BDD_PATH, _LOG_PATH, _LOGS_PATH, _CRASH_DUMP_PATH, MAX_NBR_PATH };
 
-        //FIXME - Il faut reviser ce type de variable: PTCHAR -> string
+        //Il faut reviser ce type de variable: PTCHAR -> string
         public struct stFtpPath
         {
             public string pzName;
@@ -2695,6 +2731,142 @@ namespace CCS_Actions
             Console.WriteLine("Unock reset codeur");
             return iErr;
         }
+
+        public int CCCSA_ValeurDefautCodeurs_Zenith(long lValeur)
+        {
+            // Encoder buffer Initialization
+            m_ccsStop.Lock(); //Lock section
+            Console.WriteLine("Lock valeur defaut codeurs\r\n");
+            int iErr = CODE_OK;
+            /*
+            iErr &= CCCSA_SetConsole("Valeur par defaut codeur 1", MCHR_ZENITH_SetEncoder1Value(m_iID, lValeur));
+            iErr &= CCCSA_SetConsole("Valeur par defaut codeur 2", MCHR_ZENITH_SetEncoder2Value(m_iID, lValeur));
+            iErr &= CCCSA_SetConsole("Valeur par defaut codeur 3", MCHR_ZENITH_SetEncoder3Value(m_iID, lValeur));
+            iErr &= CCCSA_SetConsole("Valeur par defaut codeur 4", MCHR_ZENITH_SetEncoder4Value(m_iID, lValeur));
+            iErr &= CCCSA_SetConsole("Valeur par defaut codeur 5", MCHR_ZENITH_SetEncoder5Value(m_iID, lValeur));
+            //*/
+            ///*
+            if (m_cSelectionCodeur == 1 || m_cSelectionCodeur == 7)
+            {
+                iErr &= CCCSA_SetConsole("Valeur par defaut codeur 1", MCHR_ZENITH_SetEncoder1Value(m_iID, lValeur));
+            }
+            if (m_cSelectionCodeur == 2 || m_cSelectionCodeur == 7)
+            {
+                iErr &= CCCSA_SetConsole("Valeur par defaut codeur 2", MCHR_ZENITH_SetEncoder2Value(m_iID, lValeur));
+            }
+            if (m_cSelectionCodeur == 3 || m_cSelectionCodeur == 7)
+            {
+                iErr &= CCCSA_SetConsole("Valeur par defaut codeur 3", MCHR_ZENITH_SetEncoder3Value(m_iID, lValeur));
+            }
+            if (m_cSelectionCodeur == 4 || m_cSelectionCodeur == 7)
+            {
+                iErr &= CCCSA_SetConsole("Valeur par defaut codeur 4", MCHR_ZENITH_SetEncoder4Value(m_iID, lValeur));
+            }
+            if (m_cSelectionCodeur == 5 || m_cSelectionCodeur == 7)
+            {
+                iErr &= CCCSA_SetConsole("Valeur par defaut codeur 5", MCHR_ZENITH_SetEncoder5Value(m_iID, lValeur));
+            }//*/
+            m_ccsStop.Unlock(); //Lock section
+            Console.WriteLine("Unock valeur defaut codeurs\r\n");
+            return iErr;
+        }
+
+        //
+
+        //
+
+        //
+
+        public int CCCSA_TestTrigger()
+        {
+            m_pCIOB.CIOBCTRL_SendTriggerPulse(); //FIXME - Il faut reviser
+            /*
+            CCCSA_OpenThread(ref m_thTrigger, Trigger2, this);
+            Thread.Sleep(3000);
+            CCCSA_CloseThread(ref m_thTrigger);//*/
+            return CODE_OK;
+        }
+
+        public short CCCSA_GetOperatingTimeCounter()
+        {
+            long val = 0;
+            short shReturn = MCHR_ZENITH_GetOperatingTimeCounter(m_iID, ref val);
+            m_operatingTimeCounter = val;
+            return shReturn;
+        }
+
+        //
+
+        public bool CCCSA_GetDiagnosticInfo_ZENITH(PASYNCDIAGNOSTIC_ZENITH pDiagnosticInfo, bool addCrashDump)
+        {
+            COleDateTime oleDate = COleDateTime.GetCurrentTime(); //FIXME - Il faut reviser si cette fonction marche en C#
+            long lNbFilesFound = 0;
+            CCCSA_GetOperatingTimeCounter();
+            pDiagnosticInfo.numberOfGroup = MAX_NBR_PATH;
+            if (!addCrashDump)
+            {
+                pDiagnosticInfo.numberOfGroup--;
+            }
+            for (int i = 0; i < pDiagnosticInfo.numberOfGroup; i++)
+            {
+                CCCSA_GetFtpDir(tyFtpPath[i].pzPath, null, ref lNbFilesFound); //FIXME - Il faut reviser cette fonction
+                pDiagnosticInfo.groupFiles[i].pInfoFile = new MCHR_FILE_DATA[lNbFilesFound];
+                Array.Clear(pDiagnosticInfo.groupFiles[i].pInfoFile, 0, lNbFilesFound);
+                string destDiagDir = tyFtpPath[i].pzDiagDirName;
+                pDiagnosticInfo.groupFiles[i].groupName = destDiagDir;
+
+                short shresult = CCCSA_GetFtpDir(tyFtpPath[i].pzPath, pDiagnosticInfo.groupFiles[i].pInfoFile, ref lNbFilesFound);
+                if (shresult != 0)
+                {
+                    // Download each file and add them to the zip file
+                    pDiagnosticInfo.groupFiles[i].numberOfFiles = lNbFilesFound;
+                }
+            }
+            return true;
+        }
+
+        public bool ReleaseDiagnosticInfo(PASYNCDIAGNOSTIC_ZENITH pDiagnosticInfo)
+        {
+            if (pDiagnosticInfo != null)
+            {
+                for (int i = 0; i < MAX_NBR_PATH; i++)
+                {
+                    //SAFE_DELETEA(pDiagnosticInfo->groupFiles[i].pszFilePath);
+                    //SAFE_DELETEA(pDiagnosticInfo->groupFiles[i].filesSize);
+                    pDiagnosticInfo.groupFiles[i].pInfoFile = null;
+                }
+            }
+            return true;
+        }
+
+        public short CCCSA_GetFtpDir(string sFileList, PMCHR_FILE_DATA pFileData, ref long plNbFiles)
+        {
+            //string sFileListAnsi = WideCharToAnsi(sFileList);
+            short shResult = MCHR_GetFtpDir(m_iID, sFileList/*sFileListAnsi*/, pFileData, ref plNbFiles); //FIXME - Il faut reviser cette fonction
+            //CheckCHRERR(shResult, "FtpDir");
+            //SAFE_DELETEA(sFileListAnsi);
+            return shResult;
+        }
+
+        public short CCCSA_ReceiveConfig(string swConfigFile)
+        {
+            //STOPMEASURING
+
+            //string sAnsiConfFile = WideCharToAnsi(swConfigFile);
+            short shReturn = MCHR_ReceiveConfig(m_iID, swConfigFile);
+            //CheckCHRERR(shReturn, "Receive configuration");
+            //SAFE_DELETEA(sAnsiConfFile);
+
+            //STARTMEASURING
+            return shReturn;
+        }
+
+        public short CCCSA_DownloadFileEx(string src, string dest, CALLBACK_SEND_FILE CallbackSend)
+        {
+            short shResult = MCHR_DownloadFileEx(m_iID, src, dest, CallbackSend);
+            return shResult;
+        }
+
 
         /////////////
         public void CCCSA_SetAppDir(string AppDir)
